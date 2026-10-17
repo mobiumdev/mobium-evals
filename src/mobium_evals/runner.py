@@ -67,6 +67,11 @@ def run_trial(
 
     after = task.state(d, p)
     again = task.state(d, p)
+    if task.answer_state:
+        # Tried twice, as the state is read twice: a test that passes and
+        # fails by turns is not graded.
+        after = {**after, **task.answer_state(d, trial.finish, p)}
+        again = {**again, **task.answer_state(d, trial.finish, p)}
     d.m("terminate", APP)
     settings_after = d.settings()
     if task.teardown:

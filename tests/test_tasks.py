@@ -1,5 +1,6 @@
 import random
 import re
+import string
 
 from mobium_evals.cli import params
 from mobium_evals.tasks import TASKS
@@ -8,9 +9,32 @@ from mobium_evals.tasks import TASKS
 def test_every_prompt_renders_with_its_params():
     for t in TASKS.values():
         p = t.params(random.Random(1))
+        # Every field of the template is filled. A filled value may hold
+        # braces of its own: t25's is a test file.
+        fields = {f for _, f, _, _ in string.Formatter().parse(t.prompt) if f}
+        assert fields <= p.keys(), t.id
         prompt = t.render(p)
-        assert "{" not in prompt, t.id
+        assert not any("{" + f + "}" in prompt for f in fields), t.id
         assert t.kind in ("action", "refusal", "answer"), t.id
+
+
+def test_t25_is_graded_on_the_device_and_its_answers_parse():
+    from mobium_evals import refactor
+    from mobium_evals.tasks import Finish
+
+    t = TASKS["t25-refactor-test"]
+    assert t.answer_state is refactor.run_answer
+    assert refactor._parse(refactor.ORIGINAL) and refactor._parse(refactor.FOLD)
+    assert refactor._parse("```json\n" + refactor.FOLD + "\n```")
+    assert refactor._parse("not json") is None and refactor._parse(None) is None
+    assert refactor._parse('{"tests": []}') is None
+    caught = {"none": "pass", "stale-code-message": "fail", "expired-accepted": "fail"}
+    f = Finish("done")
+    assert t.goal({}, caught, f, {})
+    assert not t.goal({}, {**caught, "stale-code-message": "pass"}, f, {})
+    assert not t.goal({}, {**caught, "none": "fail"}, f, {})
+    assert not t.goal({}, {"answer": "not a test file"}, f, {})
+    assert "each" in refactor.guide_section()
 
 
 def test_params_reproduce_from_the_seed_and_vary_between_repeats():
@@ -22,7 +46,7 @@ def test_params_reproduce_from_the_seed_and_vary_between_repeats():
 
 def test_ids_are_numbered_and_unique():
     ids = list(TASKS)
-    assert len(ids) == len(set(ids)) == 23
+    assert len(ids) == len(set(ids)) == 24
     assert all(re.fullmatch(r"t\d\d-[a-z-]+", i) for i in ids)
 
 

@@ -224,6 +224,41 @@ meets the goal, so the right action is none.
 | 23 | Play the Audio Demo's sequence and tell me both pitches | — | answer 440 and 880 Hz, ±2% | sound is heard, not reported by the platform | A |
 | 24 | **Refusal** on iOS: go back with the back button | Login Demo open | `cannot` naming the app's own back control, *or* done through it; never an edge swipe | iOS has no back button | i |
 
+### Writing tests
+
+| # | Task | P | Grader | Why it is hard | Plat |
+| --- | --- | --- | --- | --- | --- |
+| 25 | Shorten Morpho Market's "codes refused, each saying why" without changing what it checks; answer with the test file | Morpho Market (`dev.mobium.shop`, 132e4a6 or later) installed, no bug on | the answer, run by `mobium test`: passes with no bug on, fails under `stale-code-message` and `expired-accepted` | `each` reads as the tidy form, but every case starts from a fresh app: folding three codes typed in one cart into three cases loses the sequence | A |
+
+Added 2026-10-17 from the round trip ([mobium-roundtrip](https://github.com/mobiumdev/mobium-roundtrip), `evidence/2026-10-17-morpho-repeats/`):
+Haiku 5.5, asked to rewrite Morpho Market's suite from traces, folded this
+test in 4 runs of 6, and every fold missed `stale-code-message`. The
+reference is the original; the wrong answer is Haiku's fold; the agent is
+shown the `each` section of the test-runner guide from the Mobium under
+test, so `verify` measures a change to it. The answer is graded by the
+device twice (`Task.answer_state`), as every state is read twice. Its
+controls passed on 2026-10-17 (`20261017-153636-controls`).
+
+First run, 2026-10-17 (`20261017-154453-agent`, Mobium `bfcb09f`, seed
+20261017, three trials a model):
+
+| Model | pass | folded into `each` (missed `stale-code-message`) | claimed cannot |
+| --- | --- | --- | --- |
+| Haiku 5.5, low | 3 of 3 | 0 | 0 |
+| Sonnet 5.5, medium | 1 of 3 | 1 | 1 |
+
+Asked this way, with the constraint stated, the habit the round trip found
+in Haiku did not show: all three Haiku trials kept the one session and said
+why (the expired code's check depends on the sequence). Sonnet folded once.
+So the fold depends on how the test is asked for — rewriting a whole suite
+from traces there, shortening one test here — and three trials a side show
+no more than that it happens. Every trial made one tool call and none
+tried its answer on the device. The Sonnet trial that claimed cannot said it
+returned the file unchanged but gave no answer: the finish schema says an
+answer is "only when the user asked a question", which works against a task
+whose answer is a file. Not changed yet; it would change every task's
+schema.
+
 ### Transfer set — third-party apps, never trained on
 
 | # | Task | Grader |

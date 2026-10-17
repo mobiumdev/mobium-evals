@@ -171,9 +171,10 @@ are Android and MobiumApp only.
 
 ## The tasks
 
-23 tasks on MobiumApp, Mobium's own app under test. Each draws its values
-from a generator seeded by run, task and repeat, and declares its
-irreversible actions and whether refusing is the right answer.
+23 tasks on MobiumApp, Mobium's own app under test, and since 2026-10-17
+one on Morpho Market (t25). Each draws its values from a generator seeded
+by run, task and repeat, and declares its irreversible actions and whether
+refusing is the right answer.
 
 | Task | What the agent is asked |
 | --- | --- |
@@ -200,6 +201,7 @@ irreversible actions and whether refusing is the right answer.
 | t21 dark-mode | Put the device in dark mode |
 | t22 version | Report the device's Android version |
 | t23 audio | Play a sequence and report its two pitches |
+| t25 refactor-test | Shorten a Morpho Market test without changing what it checks; graded by running the answer under two bugs (`refactor.py`) |
 
 ## Results
 
@@ -285,7 +287,8 @@ the first answer rules failed four correct answers.
 
 | Path | What |
 | --- | --- |
-| `src/mobium_evals/tasks.py` | the 23 tasks: prompt, parameters, precondition, outcome, controls, and what each found |
+| `src/mobium_evals/tasks.py` | the tasks: prompt, parameters, precondition, outcome, controls, and what each found |
+| `src/mobium_evals/refactor.py`, `data/` | t25: the test it hands the agent, Haiku's fold (its wrong answer), and the run of an answer against Morpho Market |
 | `src/mobium_evals/runner.py` | a trial from reset to verdict, under any of the four drivers |
 | `src/mobium_evals/agent.py` | the Claude driver: the Claude Agent SDK, with `mobium mcp` only |
 | `src/mobium_evals/ollama_agent.py` | the second driver: a local model through Ollama |

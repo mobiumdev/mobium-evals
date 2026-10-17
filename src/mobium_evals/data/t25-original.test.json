@@ -1,0 +1,101 @@
+{
+  "description": "Morpho Market's cart refuses three codes, each with its own message. Each test starts from a reset store.",
+  "app": "dev.mobium.shop",
+  "beforeEach": [
+    {
+      "dialogs": {
+        "when": "Morpho Market",
+        "press": "Open"
+      },
+      "description": "iOS asks before a link opens the app, until Open is pressed once; Android never asks"
+    },
+    {
+      "open_url": "mobiumshop://reset"
+    },
+    {
+      "wait_for": {
+        "target": "testid=catalogList",
+        "timeout_ms": 3000
+      },
+      "description": "the catalog is there at once: slow-catalog takes 8 seconds"
+    }
+  ],
+  "tests": [
+    {
+      "name": "codes refused, each saying why",
+      "steps": [
+        {
+          "tap": "testid=product_pins"
+        },
+        {
+          "tap": "testid=qtyPlus"
+        },
+        {
+          "tap": "testid=addToCart"
+        },
+        {
+          "tap": "testid=viewCart"
+        },
+        {
+          "fill": {
+            "target": "testid=codeField",
+            "text": "MOBIUM5"
+          }
+        },
+        {
+          "tap": "testid=applyCode"
+        },
+        {
+          "wait_for": {
+            "target": "testid=codeMessage",
+            "condition": "text",
+            "text": "Add $6.00 more to use this code.",
+            "exact": true
+          }
+        },
+        {
+          "fill": {
+            "target": "testid=codeField",
+            "text": "EXPIRED20"
+          }
+        },
+        {
+          "tap": "testid=applyCode"
+        },
+        {
+          "wait_for": {
+            "target": "testid=codeMessage",
+            "condition": "text",
+            "text": "That code has expired.",
+            "exact": true,
+            "timeout_ms": 3000
+          }
+        },
+        {
+          "wait_for": {
+            "target": "testid=sumDiscount",
+            "condition": "hidden",
+            "timeout_ms": 2000
+          }
+        },
+        {
+          "fill": {
+            "target": "testid=codeField",
+            "text": "FREESTUFF"
+          }
+        },
+        {
+          "tap": "testid=applyCode"
+        },
+        {
+          "wait_for": {
+            "target": "testid=codeMessage",
+            "condition": "text",
+            "text": "That code isn't valid.",
+            "exact": true
+          }
+        }
+      ]
+    }
+  ]
+}

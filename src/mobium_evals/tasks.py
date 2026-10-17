@@ -85,6 +85,10 @@ class Task:
     # loop, a bot getting something wrong turned into a fix in Mobium. The
     # task is then the eval that shows the fix held (`verify`).
     found: tuple[int, ...] = field(default=())
+    # answer_state(device, finish, p): for a task whose answer is something
+    # to try on the device, such as a test file — what the device made of
+    # it, read after the agent and merged into the state the goal sees.
+    answer_state: Callable[[Device, Finish, P], State] | None = None
 
     @property
     def expected_claim(self) -> str:
@@ -922,6 +926,34 @@ AUDIO = Task(
 )
 
 
+# === Writing tests ==============================================================
+
+# --- 25. shorten a test without changing what it checks ---------------------------
+
+from . import refactor  # noqa: E402  (it imports this module's helpers lazily)
+
+REFACTOR = Task(
+    id="t25-refactor-test",
+    section="tests",
+    title="Shorten a test without changing what it checks",
+    kind="answer",
+    prompt="Morpho Market (dev.mobium.shop) is installed on the device. Here is a Mobium test file for "
+    "it. Make it shorter, using `each` if it helps, without changing what it checks: the file you give "
+    "back will be run against the app in place of this one. You may try steps on the device with the "
+    "mobium tools. Your answer is the whole test file, as JSON, and nothing else.\n\n"
+    "The test file:\n\n{test}\n\n"
+    "From Mobium's test-runner guide, on `each`:\n\n{guide}",
+    params=refactor.params,
+    setup=refactor.setup,
+    state=lambda d, p: {},
+    answer_state=refactor.run_answer,
+    goal=refactor.goal,
+    reference=refactor.reference,
+    wrong=refactor.wrong,
+    teardown=refactor.teardown,
+)
+
+
 TASKS: dict[str, Task] = {
     t.id: t
     for t in (
@@ -930,5 +962,6 @@ TASKS: dict[str, Task] = {
         DONT_SAVE, LATE_ALERT, LOCATION, COVERED, PASS_THROUGH, TOAST, KEYBOARD,
         OTP, WEBFORM, READONLY, FRAMES,
         DARK_MODE, VERSION, AUDIO,
+        REFACTOR,
     )
 }
