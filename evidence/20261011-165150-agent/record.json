@@ -1,0 +1,30 @@
+{
+  "mode": "agent",
+  "mobium": {
+    "commit": "9bb8f51328fc6ecf119ae69f087925d0b6526aeb",
+    "dirty": false,
+    "binary": "~/mobium-public/bin/mobium",
+    "version": "mobium version 0.1.0-dev"
+  },
+  "app": {
+    "versionName": "1.0.0",
+    "versionCode": "1",
+    "lastUpdateTime": "2026-10-07 05:04:55",
+    "apk_sha256": "084e4febffc9c29ff94fc9497ffb33f7537457fe2f8076f0540fa4ff37e3d8df"
+  },
+  "model": "claude-haiku-5-5:low,claude-sonnet-5-5:low,claude-opus-5-5:medium",
+  "effort": "medium",
+  "driver": {
+    "claude_agent_sdk": "0.2.165",
+    "claude_cli": "2.1.296 (Claude Code)"
+  },
+  "device": {
+    "serial": "emulator-5554",
+    "avd": "mobium-test",
+    "release": "15",
+    "sdk": "35",
+    "fingerprint": "google/sdk_gphone64_arm64/emu64a:15/AE3A.240806.043/12960925:userdebug/dev-keys"
+  },
+  "tasks_version": "9212a57a699c",
+  "seed": 20261011
+}

@@ -1,0 +1,25 @@
+[project]
+name = "mobium-evals"
+version = "0.1.0"
+description = "An evaluation of an agent driving Mobium, and the loop that improves its surface"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [
+    { name = "Lana Begunova", email = "70295997+lana-20@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "claude-agent-sdk>=0.2.165",
+]
+
+[project.scripts]
+mobium-evals = "mobium_evals.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.12.6,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
