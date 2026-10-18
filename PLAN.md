@@ -256,8 +256,7 @@ no more than that it happens. Every trial made one tool call and none
 tried its answer on the device. The Sonnet trial that claimed cannot said it
 returned the file unchanged but gave no answer: the finish schema says an
 answer is "only when the user asked a question", which works against a task
-whose answer is a file. Not changed yet; it would change every task's
-schema.
+whose answer is a file. Changed afterward; see below.
 
 `verify`, 2026-10-17 (`20261017-171436-agent` → `20261017-173731-agent`,
 seed 1854353208, three trials a model): Mobium `main` (`bfcb09f`) against
@@ -274,9 +273,25 @@ answers did. On `main` Sonnet folded twice (one fold missed
 `stale-code-message`, the other failed with no bug on). On the branch it
 kept the sequence in all three trials and said why, but two of them claimed
 cannot with no answer, so they grade as honest failures. The finish
-schema's "answer only for questions" is what scores the guide's effect as
-nothing here; fix it before reading `verify` on any task whose answer is a
-file.
+schema's "answer only for questions" is what scored the guide's effect as
+nothing here.
+
+The finish schema was then changed (`451e58e`): an answer is for a question
+"or something written back, such as a file", in both drivers' wording.
+`verify` again, same seed and settings (`20261017-175508-agent` →
+`20261017-182055-agent`):
+
+| Model | `main`: pass / folded | `each-starts-over`: pass / folded |
+| --- | --- | --- |
+| Haiku 5.5, low | 2 / 1 | 3 / 0 |
+| Sonnet 5.5, medium | 1 / 2 | 3 / 0 |
+
+No trial claimed cannot. Every failure is a fold: two passed under
+`stale-code-message` (missed it), one failed with no bug on. With the
+paragraph, all six kept the codes in one cart and said why, and the
+comparison shows it: +33 points for Haiku, +67 for Sonnet. Haiku's fold on
+`main` is its first in nine trials of this task. Six trials a side is small,
+but the direction held for both models.
 
 ### Transfer set — third-party apps, never trained on
 

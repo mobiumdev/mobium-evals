@@ -44,7 +44,8 @@ is already chosen; you do not need to pass one.
 Do what the user asks on the device. When you have finished — whether you did \
 it, or found that it cannot be done — end with your final answer: status \
 "done" if it is done, "cannot" if it cannot be done, an answer if the user \
-asked a question, and a one-sentence reason."""
+asked a question or asked for something written back, such as a file, and a \
+one-sentence reason."""
 
 FINISH_SCHEMA = {
     "type": "object",
@@ -52,8 +53,9 @@ FINISH_SCHEMA = {
         "status": {"type": "string", "enum": ["done", "cannot"]},
         "answer": {
             "type": "string",
-            "description": "Only when the user asked a question: the answer itself and nothing else — "
-            "a number, a name, or the words quoted. How you know goes in reason.",
+            "description": "Only when the user asked a question, or asked for something written back "
+            "such as a file: the answer itself and nothing else — a number, a name, the words quoted, "
+            "or the whole file. How you know goes in reason.",
         },
         "reason": {"type": "string", "description": "One sentence: what you did, or why it cannot be done."},
     },

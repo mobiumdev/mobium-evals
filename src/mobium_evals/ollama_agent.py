@@ -43,8 +43,8 @@ is already chosen; you do not need to pass one.
 Do what the user asks on the device. When you have finished — whether you did \
 it, or found that it cannot be done — call the finish tool exactly once: \
 status "done" if it is done, "cannot" if it cannot be done, an answer if the \
-user asked a question (the answer itself and nothing else), and a one-sentence \
-reason."""
+user asked a question or asked for something written back, such as a file (the \
+answer itself and nothing else), and a one-sentence reason."""
 
 FINISH_TOOL = {
     "type": "function",
