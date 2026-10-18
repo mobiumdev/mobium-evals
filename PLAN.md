@@ -259,6 +259,25 @@ answer is "only when the user asked a question", which works against a task
 whose answer is a file. Not changed yet; it would change every task's
 schema.
 
+`verify`, 2026-10-17 (`20261017-171436-agent` → `20261017-173731-agent`,
+seed 1854353208, three trials a model): Mobium `main` (`bfcb09f`) against
+the local branch `each-starts-over` (`f30ea85`), whose guide adds "Each
+case starts over" to the section the agent is shown.
+
+| Model | `main`: pass / folded / cannot | `each-starts-over`: pass / folded / cannot |
+| --- | --- | --- |
+| Haiku 5.5, low | 3 / 0 / 0 | 3 / 0 / 0 |
+| Sonnet 5.5, medium | 1 / 2 / 0 | 1 / 0 / 2 |
+
+The pass rate did not move, and the comparison reports "no change"; the
+answers did. On `main` Sonnet folded twice (one fold missed
+`stale-code-message`, the other failed with no bug on). On the branch it
+kept the sequence in all three trials and said why, but two of them claimed
+cannot with no answer, so they grade as honest failures. The finish
+schema's "answer only for questions" is what scores the guide's effect as
+nothing here; fix it before reading `verify` on any task whose answer is a
+file.
+
 ### Transfer set — third-party apps, never trained on
 
 | # | Task | Grader |
