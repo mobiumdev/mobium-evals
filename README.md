@@ -301,6 +301,7 @@ the first answer rules failed four correct answers.
 | `src/mobium_evals/verify.py` | `verify`: two Mobium commits, built apart, the same tasks and seed, compared |
 | `src/mobium_evals/cli.py` | `mobium-evals` |
 | `probes/` | the leakage guard's control; where a password goes |
+| `claims/` | 28 claims with known answers about recorded Morpho Match runs, for judging Mobium's verifier (`mobium check`); each judge's verdicts and score in its README |
 
 ## Related
 

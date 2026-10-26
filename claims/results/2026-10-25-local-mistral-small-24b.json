@@ -1,0 +1,306 @@
+{
+ "judge": "mobium check --model local:mistral-small:24b (each claim its own check)",
+ "date": "2026-10-25",
+ "verdicts": {
+  "c01": {
+   "status": "passed",
+   "summary": "After card 3 was tapped, it was shown face up as the Blue Morpho.",
+   "steps": 6,
+   "evidence": [
+    "call@7: tapped testid=card_2 at (670, 537).",
+    "call@8: label=\"Card 3, Blue Morpho\" is visible after 15ms \u2014 @e4 Card 3, Blue Morpho Blue Morpho (button)."
+   ],
+   "seconds": 32.6
+  },
+  "c02": {
+   "status": "passed",
+   "summary": "Card 3 turned out to be the Blue Morpho, not the Monarch.",
+   "steps": 7,
+   "evidence": [
+    "call@6: Card 3 is face down before the tap.",
+    "call@7: Card 3 is tapped.",
+    "call@8: Card 3 is the Blue Morpho after the tap."
+   ],
+   "seconds": 35.3
+  },
+  "c03": {
+   "status": "passed",
+   "summary": "The cards matched and the move counter read 1.",
+   "steps": 8,
+   "evidence": [
+    "call@8: Card 8 matched",
+    "call@9: Move counter read 1",
+    "call@10: Pairs counter read 1 of 8"
+   ],
+   "seconds": 55.1
+  },
+  "c04": {
+   "status": "failed",
+   "summary": "The move counter read 2, not 1.",
+   "steps": 9,
+   "evidence": [
+    "call@9: the move counter read 2, not 1.",
+    "call@8: Card 8 was matched."
+   ],
+   "seconds": 45.2
+  },
+  "c05": {
+   "status": "passed",
+   "summary": "Both cards were turned face down after the mismatch.",
+   "steps": 8,
+   "evidence": [
+    "call@8: Card 2 was turned face down after the mismatch.",
+    "call@9: Card 1 was turned face down after the mismatch."
+   ],
+   "seconds": 42.6
+  },
+  "c06": {
+   "status": "passed",
+   "summary": "Cards 1 and 2 were face down after the mismatch.",
+   "steps": 7,
+   "evidence": [
+    "call@8: Card 2 is face down after the mismatch.",
+    "call@9: Card 1 is face down after the mismatch."
+   ],
+   "seconds": 41.0
+  },
+  "c07": {
+   "status": "passed",
+   "summary": "The game ended with all 8 pairs found in 8 moves.",
+   "steps": 27,
+   "evidence": [
+    "call@22: the screen after it shows 'You found all 8 pairs in 8 moves'",
+    "call@23: the screen after it shows 'Pairs: 8 of 8'"
+   ],
+   "seconds": 94.9
+  },
+  "c08": {
+   "status": "inconclusive",
+   "summary": "The model stopped without a verdict.",
+   "steps": 3,
+   "evidence": [],
+   "seconds": 23.6
+  },
+  "c09": {
+   "status": "inconclusive",
+   "summary": "The recording does not show the final status of the game, so it is inconclusive whether all 8 pairs were found.",
+   "steps": 25,
+   "evidence": [
+    "The app was terminated and launched.",
+    "The app was reset.",
+    "The app was opened with a seed of 42.",
+    "The app waited for the new game screen.",
+    "The app tapped on 16 cards.",
+    "The app failed to wait for the status message \"You found all 8 pairs in 8 moves\"."
+   ],
+   "seconds": 84.8
+  },
+  "c10": {
+   "status": "inconclusive",
+   "summary": "The model stopped without a verdict.",
+   "steps": 4,
+   "evidence": [],
+   "seconds": 42.5
+  },
+  "c11": {
+   "status": "passed",
+   "summary": "The best score shown on the home screen was 8 moves.",
+   "steps": 6,
+   "evidence": [
+    "call@24: the screen after it shows the best score as 8 moves."
+   ],
+   "seconds": 36.1
+  },
+  "c12": {
+   "status": "failed",
+   "summary": "The best score was not 8 moves.",
+   "steps": 29,
+   "evidence": [
+    "The best score was not 8 moves.",
+    "call@24: The app waited for the best score to be 8 moves, but it timed out after 10.017s waiting for testid=best to say exactly \"Best: 8 moves\" \u2014 its text is \"No best yet\""
+   ],
+   "seconds": 133.0
+  },
+  "c13": {
+   "status": "passed",
+   "summary": "The best score was still there after the app was restarted.",
+   "steps": 6,
+   "evidence": [
+    "call@1: The app was terminated.",
+    "call@24: The best score was 8 moves."
+   ],
+   "seconds": 45.3
+  },
+  "c14": {
+   "status": "passed",
+   "summary": "The butterflies were dragged into the slots smallest to largest, and the level said Sorted!",
+   "steps": 12,
+   "evidence": [
+    "call@1: the app was terminated.",
+    "call@2: the app was launched.",
+    "call@3: the app was reset.",
+    "call@5: the app was opened to the sorting level.",
+    "call@7: the Glasswing was dragged into the first slot.",
+    "call@8: the first slot shows Glasswing.",
+    "call@9: the Swallowtail was dragged into the second slot.",
+    "call@10: the second slot shows Swallowtail.",
+    "call@11: the Owl was dragged into the third slot.",
+    "call@12: the third slot shows Owl.",
+    "call@13: the Atlas was dragged into the fourth slot.",
+    "call@14: the level said Sorted!"
+   ],
+   "seconds": 75.1
+  },
+  "c15": {
+   "status": "passed",
+   "summary": "The level did not call them sorted when the butterflies were placed in the wrong order.",
+   "steps": 15,
+   "evidence": [
+    "call@11: the screen after it shows \"Smallest wingspan on the left\"",
+    "call@10: the screen after it shows \"Slot 4, Glasswing\"",
+    "call@9: the screen after it shows \"Slot 3, Atlas\"",
+    "call@8: the screen after it shows \"Slot 2, Owl\"",
+    "call@7: the screen after it shows \"Slot 1, Swallowtail\"",
+    "call@6: the screen after it shows \"Slot 0, Swallowtail\""
+   ],
+   "seconds": 77.4
+  },
+  "c16": {
+   "status": "inconclusive",
+   "summary": "The model stopped without a verdict.",
+   "steps": 3,
+   "evidence": [],
+   "seconds": 20.9
+  },
+  "c17": {
+   "status": "inconclusive",
+   "summary": "The model stopped without a verdict.",
+   "steps": 6,
+   "evidence": [],
+   "seconds": 44.6
+  },
+  "c18": {
+   "status": "inconclusive",
+   "summary": "The recording does not show the color of card 3 when it was face up.",
+   "steps": 12,
+   "evidence": [
+    "Card 3 is face down before the tap.",
+    "Card 3 is face up after the tap."
+   ],
+   "seconds": 47.5
+  },
+  "c19": {
+   "status": "passed",
+   "summary": "The cards were laid out in a 4 by 4 grid.",
+   "steps": 23,
+   "evidence": [
+    "call@6: the screen after it shows card_0 at (151, 537).",
+    "call@7: the screen after it shows card_4 at (151, 857).",
+    "call@8: the screen after it shows card_1 at (411, 537).",
+    "call@9: the screen after it shows card_12 at (151, 1497).",
+    "call@10: the screen after it shows card_2 at (670, 537).",
+    "call@11: the screen after it shows card_10 at (670, 1177).",
+    "call@12: the screen after it shows card_3 at (929, 537).",
+    "call@13: the screen after it shows card_7 at (929, 857).",
+    "call@14: the screen after it shows card_5 at (411, 857).",
+    "call@15: the screen after it shows card_8 at (151, 1177).",
+    "call@16: the screen after it shows card_6 at (670, 857).",
+    "call@17: the screen after it shows card_13 at (411, 1497)."
+   ],
+   "seconds": 121.3
+  },
+  "c20": {
+   "status": "passed",
+   "summary": "The game ended in 8 moves and offered no way to play again.",
+   "steps": 27,
+   "evidence": [
+    "call@22: the screen after it shows \"You found all 8 pairs in 8 moves\"",
+    "call@23: the screen after it shows \"Pairs: 8 of 8\""
+   ],
+   "seconds": 103.1
+  },
+  "c21": {
+   "status": "inconclusive",
+   "summary": "The model stopped without a verdict.",
+   "steps": 3,
+   "evidence": [],
+   "seconds": 44.5
+  },
+  "c22": {
+   "status": "passed",
+   "summary": "Card 16 was tapped before card 15.",
+   "steps": 6,
+   "evidence": [
+    "call@16: tapped testid=card_6 at (670, 857).",
+    "call@21: tapped testid=card_15 at (929, 1497)."
+   ],
+   "seconds": 42.2
+  },
+  "c23": {
+   "status": "passed",
+   "summary": "The app counted a single matched pair as two moves.",
+   "steps": 14,
+   "evidence": [
+    "call@9: the screen after it shows 'Moves: 2'",
+    "call@8: the screen after it shows Card 8, Monarch, matched",
+    "call@7: the screen after it shows card 7 tapped",
+    "call@6: the screen after it shows card 3 tapped"
+   ],
+   "seconds": 65.3
+  },
+  "c24": {
+   "status": "inconclusive",
+   "summary": "The recording does not show both cards face up at the same time.",
+   "steps": 8,
+   "evidence": [
+    "The recording shows the cards being tapped, but does not show both cards face up at the same time.",
+    "The recording shows the cards being turned back face down.",
+    "The recording shows the cards being tapped.",
+    "The recording shows the cards being turned back face down.",
+    "The recording shows the cards being tapped.",
+    "The recording shows the cards being turned back face down.",
+    "The recording shows the cards being tapped.",
+    "The recording shows the cards being turned back face down.",
+    "The recording shows the cards being tapped.",
+    "The recording shows the cards being turned back face down.",
+    "The recording shows the cards being tapped.",
+    "The recording shows the cards being turned back face down."
+   ],
+   "seconds": 53.1
+  },
+  "c25": {
+   "status": "failed",
+   "summary": "The game was not won in 8 moves. The game was not won at all.",
+   "steps": 27,
+   "evidence": [
+    "call@24: the screen after it shows \"No best yet\""
+   ],
+   "seconds": 101.1
+  },
+  "c26": {
+   "status": "inconclusive",
+   "summary": "The model stopped without a verdict.",
+   "steps": 3,
+   "evidence": [],
+   "seconds": 21.6
+  },
+  "c27": {
+   "status": "inconclusive",
+   "summary": "The recording does not contain any evidence of Atlas, its wingspan, or any other butterfly.",
+   "steps": 6,
+   "evidence": [
+    "The recording does not contain any evidence of Atlas, its wingspan, or any other butterfly."
+   ],
+   "seconds": 30.0
+  },
+  "c28": {
+   "status": "inconclusive",
+   "summary": "The recording does not show the tray before any drag.",
+   "steps": 13,
+   "evidence": [
+    "The first drag was at call@7, and the tray was not shown before that."
+   ],
+   "seconds": 49.8
+  }
+ }
+}

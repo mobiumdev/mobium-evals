@@ -1,0 +1,76 @@
+{
+ "judge": "mobium check --model local:nvidia/nemotron-3-ultra-550b-a55b:free (each claim its own check)",
+ "date": "2026-10-25",
+ "verdicts": {
+  "c02": {
+   "status": "failed",
+   "summary": "The claim that Card 3 turned out to be the Monarch is false. The recording shows Card 3 initially face down (call@6), then after tapping Card 2 (call@7), Card 3 revealed as \"Blue Morpho\" (call@8, screen after call@8). No reference to \"Monarch\" appears anywhere in the recording.",
+   "steps": 8,
+   "evidence": [
+    "call@6: wait_for confirmed Card 3 was initially face down",
+    "call@7: tap on testid=card_2 (Card 2), not Card 3",
+    "call@8: wait_for succeeded for label=\"Card 3, Blue Morpho\" \u2014 Card 3 revealed as Blue Morpho",
+    "screen after call@8 shows element @e4: \"Card 3, Blue Morpho Blue Morpho (button)\"",
+    "trace_search for \"Monarch\" returned 0 results \u2014 no Monarch card appears in the recording"
+   ],
+   "seconds": 20.1
+  },
+  "c06": {
+   "status": "failed",
+   "summary": "The claim that cards 1 and 2 stayed face up after not matching is false. The recording shows that after tapping card_0 (Card 1), it revealed \"Emerald Emerald\" (face up), but after tapping card_1 (Card 2), both cards immediately showed \"face down ?\" \u2014 they turned face down. The test explicitly waits for \"Card 2, face down\" and \"Card 1, face down\" (calls 8 and 9), confirming the expected behavior is that mismatched cards flip back face down.",
+   "steps": 9,
+   "evidence": [
+    "After first tap (call@6), Card 1 shows 'Card 1, Emerald Emerald' (face up), Card 2 shows 'Card 2, face down ?'",
+    "After second tap (call@7), both Card 1 and Card 2 show 'face down ?' \u2014 they have turned face down",
+    "call@8 waits for label 'Card 2, face down' and call@9 waits for label 'Card 1, face down', confirming the test expects mismatched cards to flip face down"
+   ],
+   "seconds": 19.8
+  },
+  "c13": {
+   "status": "inconclusive",
+   "summary": "The recording shows the app was terminated and launched (call@1, call@2), then a game was played and completed in 8 moves. The only check of the best score occurs at call@24 after the game, where the element testid=best reads \"Best: 8 moves\". There is no observation of the best score immediately after the restart, before the game was played. Therefore, the recording cannot establish whether the best score persisted from a prior session or simply reflects the game just completed.",
+   "steps": 9,
+   "evidence": [
+    "App terminated and launched at start (call@1, call@2)",
+    "Game played with 16 card taps (8 pairs) resulting in 8 moves (call@6\u2013call@21)",
+    "After game, wait_for testid=best confirms element says exactly \"Best: 8 moves\" (call@24)",
+    "No screen or wait_for captures best score before the game is played"
+   ],
+   "seconds": 30.7
+  },
+  "c20": {
+   "status": "failed",
+   "summary": "The game did end in 8 moves (16 taps across calls call@6\u2013call@21), but it did offer a way to play again: a \"Play again\" button is visible on the screen after the final move (call@21, call@22, call@23).",
+   "steps": 6,
+   "evidence": [
+    "16 taps (call@6 through call@21) correspond to 8 moves in the matching game",
+    "Screen after call@21 shows all 16 cards matched and a 'Play again' button at bottom center",
+    "Screen after call@22 (wait_for status) still shows the 'Play again' button",
+    "Screen after call@23 (wait_for pairs) still shows the 'Play again' button"
+   ],
+   "seconds": 47.0
+  },
+  "c22": {
+   "status": "failed",
+   "summary": "The recording shows card_14 (the 15th card, zero-indexed) tapped at call@20, then card_15 (the 16th card) tapped at call@21. Thus Card 15 was tapped before Card 16, contradicting the claim.",
+   "steps": 6,
+   "evidence": [
+    "call@20 taps testid=card_14 (the 15th card) at 34717 ms",
+    "call@21 taps testid=card_15 (the 16th card) at 36464 ms, after call@20"
+   ],
+   "seconds": 47.2
+  },
+  "c25": {
+   "status": "passed",
+   "summary": "The game was won in 8 moves. The recording shows a memory matching game with 16 cards (8 pairs). The player made 16 taps on cards (call@6 through call@21), which constitutes 8 moves (each move = flipping two cards to find a match). After the 16th tap (call@21), all 16 cards display as \"matched\" and a \"Play again\" button appears, confirming the game was completed. The subsequent test (call@24) waiting for \"Best: 8 moves\" timed out with \"No best yet,\" but this only indicates the best-score tracking didn't record the result, not that the game wasn't won in 8 moves.",
+   "steps": 8,
+   "evidence": [
+    "16 card taps recorded (call@6 through call@21), each tap flips one card in a memory matching game",
+    "After call@21, screen shows all 16 cards as 'matched' and a 'Play again' button, confirming game completion",
+    "call@22 wait_for testid=status succeeded, indicating game-end status appeared",
+    "call@24 failed waiting for 'Best: 8 moves' \u2014 the best-score label showed 'No best yet', but this is separate from whether the game was won in 8 moves"
+   ],
+   "seconds": 73.1
+  }
+ }
+}

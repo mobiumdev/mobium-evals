@@ -1,0 +1,279 @@
+{
+ "judge": "mobium check --model local:qwen2.5:14b (each claim its own check)",
+ "date": "2026-10-25",
+ "verdicts": {
+  "c01": {
+   "status": "passed",
+   "summary": "After card 3 was tapped, it was shown face up as the Blue Morpho.",
+   "steps": 4,
+   "evidence": [
+    "call@8: wait_for label=\"Card 3, Blue Morpho\"",
+    "Screen after call@8 shows Card 3, Blue Morpho Blue Morpho (button)"
+   ],
+   "seconds": 40.6
+  },
+  "c02": {
+   "status": "inconclusive",
+   "summary": "\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e40\u0e1e\u0e35\u0e22\u0e07\u0e1e\u0e2d\u0e43\u0e19\u0e01\u0e32\u0e23\u0e15\u0e23\u0e27\u0e08\u0e2a\u0e2d\u0e1a\u0e04\u0e33\u0e2d\u0e49\u0e32\u0e07\u0e2d\u0e34\u0e07\u0e17\u0e35\u0e48\u0e27\u0e48\u0e32\u0e01\u0e32\u0e23\u0e4c\u0e14\u0e17\u0e35\u0e48 3 \u0e04\u0e37\u0e2d\u0e01\u0e32\u0e23\u0e4c\u0e14\u0e23\u0e32\u0e0a\u0e27\u0e07\u0e28\u0e4c",
+   "steps": 5,
+   "evidence": [],
+   "seconds": 22.8
+  },
+  "c03": {
+   "status": "passed",
+   "summary": "Turning over cards 4 and 8 made a matched pair, and the move counter read 1.",
+   "steps": 15,
+   "evidence": [
+    "call@7: the screen after it shows Card 7 face down.",
+    "call@8: the screen after it shows Card 8 labeled as 'Card 8, Monarch, matched'",
+    "call@9: the screen after it shows the move counter reads 'Moves: 1'"
+   ],
+   "seconds": 57.6
+  },
+  "c04": {
+   "status": "failed",
+   "summary": "The claim that turning over cards 4 and 8 made a matched pair and the move counter read 1 is refuted. Card 4 was already matched with Monarch before any taps were made, and the move counter read 2 after the attempt to turn over card 7.",
+   "steps": 24,
+   "evidence": [
+    "call@5: the screen after it shows all cards face down, including cards 4 and 8.",
+    "call@6: the screen after it shows card 3 face up, but card 4 is still face down and matched with Monarch.",
+    "call@7: the screen after it shows card 7 face up, and card 8 is matched with Monarch.",
+    "call@8: the screen after it shows card 8 matched with Monarch, but card 4 is still face down and matched with Monarch.",
+    "call@9: the screen after it shows the move counter reads 2, not 1."
+   ],
+   "seconds": 93.0
+  },
+  "c05": {
+   "status": "inconclusive",
+   "summary": "No evidence found in the trace to confirm or refute the claim that after cards 1 and 2 did not match, both were turned face down again.",
+   "steps": 5,
+   "evidence": [
+    "trace_search for 'cards 1 and 2 did not match' returned no calls.",
+    "trace_search for 'turned face down again' returned no calls."
+   ],
+   "seconds": 22.8
+  },
+  "c06": {
+   "status": "inconclusive",
+   "summary": "No evidence found regarding cards 1 and 2 not matching and staying face up.",
+   "steps": 5,
+   "evidence": [
+    "trace_search for 'cards 1 and 2 did not match' returned no calls.",
+    "trace_search for 'cards 1 and 2 unmatched' returned no calls."
+   ],
+   "seconds": 25.1
+  },
+  "c07": {
+   "status": "passed",
+   "summary": "The game ended with the message 'You found all 8 pairs in 8 moves', confirming the claim.",
+   "steps": 6,
+   "evidence": [
+    "Call call@22 waited for the text 'You found all 8 pairs in 8 moves' to appear, indicating the game's end state.",
+    "The screen after call@22 shows all cards matched, confirming all 8 pairs were found in 8 moves."
+   ],
+   "seconds": 26.1
+  },
+  "c08": {
+   "status": "failed",
+   "summary": "The game ended with all 8 pairs found, but it took 16 moves, not 8 as claimed.",
+   "steps": 6,
+   "evidence": [
+    "call@22: the screen after it shows the game status message 'You found all 8 pairs in 16 moves'"
+   ],
+   "seconds": 28.8
+  },
+  "c09": {
+   "status": "failed",
+   "summary": "The app did not display the message 'You found all 8 pairs in 8 moves' after the sequence of taps.",
+   "steps": 4,
+   "evidence": [
+    "The app displayed 'You found 7 pairs in 8 moves' instead of the expected message.",
+    "The call 'call@22' timed out waiting for the expected message."
+   ],
+   "seconds": 22.7
+  },
+  "c10": {
+   "status": "inconclusive",
+   "summary": "The step limit (40) was reached before a verdict.",
+   "steps": 74,
+   "evidence": [],
+   "seconds": 79.0
+  },
+  "c11": {
+   "status": "passed",
+   "summary": "The home screen showed the best score as 8 moves after the game.",
+   "steps": 7,
+   "evidence": [
+    "call@24: wait_for testid=best says exactly \"Best: 8 moves\" after 5ms",
+    "Screen after call@24: element with testid=best says \"Best: 8 moves\""
+   ],
+   "seconds": 32.0
+  },
+  "c12": {
+   "status": "failed",
+   "summary": "The recording shows that the element with testid=best did not display 'Best: 8 moves', instead it showed 'No best yet'. Additionally, the screen after the call did not show any indication of a score or a home screen.",
+   "steps": 7,
+   "evidence": [
+    "call@24: timed out waiting for the element with testid=best to display 'Best: 8 moves', instead it showed 'No best yet'.",
+    "The screen after call@23 did not show any indication of a score or a home screen."
+   ],
+   "seconds": 31.7
+  },
+  "c13": {
+   "status": "inconclusive",
+   "summary": "\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e40\u0e1e\u0e35\u0e22\u0e07\u0e1e\u0e2d\u0e17\u0e35\u0e48\u0e08\u0e30\u0e22\u0e37\u0e19\u0e22\u0e31\u0e19\u0e2b\u0e23\u0e37\u0e2d\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e02\u0e49\u0e2d\u0e01\u0e25\u0e48\u0e32\u0e27\u0e2d\u0e49\u0e32\u0e07\u0e27\u0e48\u0e32\u0e04\u0e30\u0e41\u0e19\u0e19\u0e17\u0e35\u0e48\u0e14\u0e35\u0e17\u0e35\u0e48\u0e2a\u0e38\u0e14\u0e22\u0e31\u0e07\u0e04\u0e07\u0e2d\u0e22\u0e39\u0e48\u0e2b\u0e25\u0e31\u0e07\u0e08\u0e32\u0e01\u0e17\u0e35\u0e48\u0e41\u0e2d\u0e1b\u0e16\u0e39\u0e01\u0e40\u0e23\u0e34\u0e48\u0e21\u0e43\u0e2b\u0e21\u0e48",
+   "steps": 1,
+   "evidence": [
+    "\u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e17\u0e35\u0e48\u0e1a\u0e31\u0e19\u0e17\u0e36\u0e01\u0e44\u0e27\u0e49\u0e40\u0e01\u0e35\u0e48\u0e22\u0e27\u0e01\u0e31\u0e1a\u0e04\u0e30\u0e41\u0e19\u0e19\u0e17\u0e35\u0e48\u0e14\u0e35\u0e17\u0e35\u0e48\u0e2a\u0e38\u0e14\u0e01\u0e48\u0e2d\u0e19\u0e41\u0e25\u0e30\u0e2b\u0e25\u0e31\u0e07\u0e08\u0e32\u0e01\u0e17\u0e35\u0e48\u0e41\u0e2d\u0e1b\u0e16\u0e39\u0e01\u0e40\u0e23\u0e34\u0e48\u0e21\u0e43\u0e2b\u0e21\u0e48"
+   ],
+   "seconds": 18.7
+  },
+  "c14": {
+   "status": "inconclusive",
+   "summary": "The model stopped without a verdict.",
+   "steps": 20,
+   "evidence": [],
+   "seconds": 51.0
+  },
+  "c15": {
+   "status": "inconclusive",
+   "summary": "\u0e44\u0e21\u0e48\u0e1e\u0e1a\u0e2b\u0e25\u0e31\u0e01\u0e10\u0e32\u0e19\u0e17\u0e35\u0e48\u0e0a\u0e31\u0e14\u0e40\u0e08\u0e19\u0e43\u0e19\u0e01\u0e32\u0e23\u0e22\u0e37\u0e19\u0e22\u0e31\u0e19\u0e2b\u0e23\u0e37\u0e2d\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e04\u0e33\u0e2d\u0e49\u0e32\u0e07\u0e17\u0e35\u0e48\u0e27\u0e48\u0e32 '\u0e40\u0e21\u0e37\u0e48\u0e2d\u0e1c\u0e35\u0e40\u0e2a\u0e37\u0e49\u0e2d\u0e16\u0e39\u0e01\u0e27\u0e32\u0e07\u0e43\u0e19\u0e25\u0e33\u0e14\u0e31\u0e1a\u0e17\u0e35\u0e48\u0e1c\u0e34\u0e14\u0e1e\u0e25\u0e32\u0e14 \u0e23\u0e30\u0e14\u0e31\u0e1a\u0e44\u0e21\u0e48\u0e40\u0e23\u0e35\u0e22\u0e01\u0e43\u0e0a\u0e49\u0e04\u0e33\u0e27\u0e48\u0e32 'sorted'",
+   "steps": 5,
+   "evidence": [
+    "\u0e44\u0e21\u0e48\u0e1e\u0e1a\u0e01\u0e32\u0e23\u0e42\u0e17\u0e23\u0e17\u0e35\u0e48\u0e21\u0e35\u0e04\u0e33\u0e27\u0e48\u0e32 'butterflies' \u0e2b\u0e23\u0e37\u0e2d 'sorted'",
+    "\u0e02\u0e32\u0e14\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e17\u0e35\u0e48\u0e08\u0e33\u0e40\u0e1b\u0e47\u0e19\u0e43\u0e19\u0e01\u0e32\u0e23\u0e15\u0e23\u0e27\u0e08\u0e2a\u0e2d\u0e1a\u0e04\u0e33\u0e2d\u0e49\u0e32\u0e07"
+   ],
+   "seconds": 22.3
+  },
+  "c16": {
+   "status": "inconclusive",
+   "summary": "\u0e44\u0e21\u0e48\u0e21\u0e35\u0e2b\u0e25\u0e31\u0e01\u0e10\u0e32\u0e19\u0e17\u0e35\u0e48\u0e0a\u0e31\u0e14\u0e40\u0e08\u0e19\u0e40\u0e1e\u0e35\u0e22\u0e07\u0e1e\u0e2d\u0e17\u0e35\u0e48\u0e08\u0e30\u0e22\u0e37\u0e19\u0e22\u0e31\u0e19\u0e2b\u0e23\u0e37\u0e2d\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e04\u0e33\u0e2d\u0e49\u0e32\u0e07\u0e17\u0e35\u0e48\u0e27\u0e48\u0e32\u0e40\u0e21\u0e37\u0e48\u0e2d\u0e1c\u0e35\u0e40\u0e2a\u0e37\u0e49\u0e2d\u0e16\u0e39\u0e01\u0e27\u0e32\u0e07\u0e43\u0e19\u0e25\u0e33\u0e14\u0e31\u0e1a\u0e17\u0e35\u0e48\u0e1c\u0e34\u0e14\u0e1e\u0e25\u0e32\u0e14 \u0e23\u0e30\u0e14\u0e31\u0e1a\u0e44\u0e21\u0e48\u0e40\u0e23\u0e35\u0e22\u0e01\u0e43\u0e0a\u0e49\u0e04\u0e33\u0e27\u0e48\u0e32 'sorted'",
+   "steps": 3,
+   "evidence": [
+    "\u0e21\u0e35\u0e01\u0e32\u0e23\u0e42\u0e17\u0e23\u0e17\u0e35\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e1c\u0e34\u0e14\u0e1e\u0e25\u0e32\u0e14\u0e40\u0e01\u0e35\u0e48\u0e22\u0e27\u0e01\u0e31\u0e1a\u0e01\u0e32\u0e23\u0e23\u0e2d\u0e43\u0e2b\u0e49\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21\u0e1a\u0e19\u0e2b\u0e19\u0e49\u0e32\u0e08\u0e2d\u0e40\u0e1b\u0e47\u0e19 'Smallest wingspan on the left' \u0e41\u0e15\u0e48\u0e17\u0e35\u0e48\u0e1b\u0e23\u0e32\u0e01\u0e0f\u0e08\u0e23\u0e34\u0e07\u0e04\u0e37\u0e2d 'Sorted!'",
+    "\u0e44\u0e21\u0e48\u0e1e\u0e1a\u0e01\u0e32\u0e23\u0e42\u0e17\u0e23\u0e17\u0e35\u0e48\u0e21\u0e35\u0e04\u0e33\u0e27\u0e48\u0e32 'butterflies' \u0e2b\u0e23\u0e37\u0e2d 'sorted' \u0e2d\u0e22\u0e39\u0e48\u0e43\u0e19\u0e1c\u0e25\u0e25\u0e31\u0e1e\u0e18\u0e4c"
+   ],
+   "seconds": 26.8
+  },
+  "c17": {
+   "status": "passed",
+   "summary": "The screen after call@8 shows that card 3 was labeled as 'Card 3, Blue Morpho', confirming it was shown in blue.",
+   "steps": 5,
+   "evidence": [
+    "The call@8 result shows the label 'Card 3, Blue Morpho' is visible.",
+    "The screen after call@8 shows the element @e4 as 'Card 3, Blue Morpho Blue Morpho (button)'."
+   ],
+   "seconds": 32.5
+  },
+  "c18": {
+   "status": "failed",
+   "summary": "Card 3 was shown as Blue Morpho, not orange.",
+   "steps": 8,
+   "evidence": [
+    "call@8: the screen after it shows Card 3 as Blue Morpho, not orange."
+   ],
+   "seconds": 41.2
+  },
+  "c19": {
+   "status": "inconclusive",
+   "summary": "\u0e44\u0e21\u0e48\u0e21\u0e35\u0e01\u0e32\u0e23\u0e40\u0e23\u0e35\u0e22\u0e01\u0e43\u0e0a\u0e49\u0e07\u0e32\u0e19\u0e17\u0e35\u0e48\u0e40\u0e01\u0e35\u0e48\u0e22\u0e27\u0e02\u0e49\u0e2d\u0e07\u0e01\u0e31\u0e1a\u0e01\u0e32\u0e23\u0e08\u0e31\u0e14\u0e40\u0e23\u0e35\u0e22\u0e07\u0e02\u0e2d\u0e07\u0e44\u0e1e\u0e48\u0e43\u0e19\u0e41\u0e2d\u0e1b\u0e1e\u0e25\u0e34\u0e40\u0e04\u0e0a\u0e31\u0e19 \u0e14\u0e31\u0e07\u0e19\u0e31\u0e49\u0e19 \u0e44\u0e21\u0e48\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e21\u0e39\u0e25\u0e40\u0e1e\u0e35\u0e22\u0e07\u0e1e\u0e2d\u0e43\u0e19\u0e01\u0e32\u0e23\u0e15\u0e23\u0e27\u0e08\u0e2a\u0e2d\u0e1a\u0e04\u0e33\u0e2d\u0e49\u0e32\u0e07\u0e27\u0e48\u0e32 '\u0e44\u0e1e\u0e48\u0e16\u0e39\u0e01\u0e27\u0e32\u0e07\u0e43\u0e19\u0e23\u0e39\u0e1b\u0e41\u0e1a\u0e1a\u0e01\u0e23\u0e34\u0e14 4x4'",
+   "steps": 3,
+   "evidence": [],
+   "seconds": 23.9
+  },
+  "c20": {
+   "status": "failed",
+   "summary": "The game ended in 8 moves, but there was a 'Play again' button available.",
+   "steps": 8,
+   "evidence": [
+    "call@23: The screen after the game ended had a 'Play again' button."
+   ],
+   "seconds": 45.7
+  },
+  "c21": {
+   "status": "passed",
+   "summary": "The sequence of taps and the state of the screen after each tap confirm that every card was tapped exactly once and no card was tapped more than once.",
+   "steps": 30,
+   "evidence": [
+    "Screen after call@6 shows Card 1 tapped.",
+    "Screen after call@7 shows Card 4 tapped.",
+    "Screen after call@8 shows Card 1 tapped (already matched).",
+    "Screen after call@9 shows Card 12 tapped.",
+    "Screen after call@10 shows Card 2 tapped.",
+    "Screen after call@11 shows Card 10 tapped.",
+    "Screen after call@12 shows Card 3 tapped.",
+    "Screen after call@13 shows Card 7 tapped.",
+    "Screen after call@14 shows Card 5 tapped.",
+    "Screen after call@15 shows Card 8 tapped.",
+    "Screen after call@16 shows Card 6 tapped.",
+    "Screen after call@17 shows Card 13 tapped."
+   ],
+   "seconds": 220.0
+  },
+  "c22": {
+   "status": "failed",
+   "summary": "Card 16 was tapped after card 15.",
+   "steps": 3,
+   "evidence": [
+    "call@20: tap testid=card_14",
+    "call@21: tap testid=card_15"
+   ],
+   "seconds": 33.9
+  },
+  "c23": {
+   "status": "passed",
+   "summary": "The move count was incremented to 2 after a single match, confirming the claim.",
+   "steps": 5,
+   "evidence": [
+    "Call call@9 timed out waiting for 'Moves: 1', instead found 'Moves: 2'.",
+    "Screen after call@9 shows 'Moves: 2'."
+   ],
+   "seconds": 25.7
+  },
+  "c24": {
+   "status": "inconclusive",
+   "summary": "\u0e44\u0e21\u0e48\u0e21\u0e35\u0e2b\u0e25\u0e31\u0e01\u0e10\u0e32\u0e19\u0e40\u0e1e\u0e35\u0e22\u0e07\u0e1e\u0e2d\u0e17\u0e35\u0e48\u0e08\u0e30\u0e22\u0e37\u0e19\u0e22\u0e31\u0e19\u0e2b\u0e23\u0e37\u0e2d\u0e1b\u0e0f\u0e34\u0e40\u0e2a\u0e18\u0e04\u0e33\u0e2d\u0e49\u0e32\u0e07\u0e2d\u0e34\u0e07\u0e27\u0e48\u0e32\u0e01\u0e32\u0e23\u0e4c\u0e14\u0e17\u0e35\u0e48\u0e44\u0e21\u0e48\u0e15\u0e23\u0e07\u0e01\u0e31\u0e19\u0e17\u0e31\u0e49\u0e07\u0e2a\u0e2d\u0e07\u0e43\u0e1a\u0e16\u0e39\u0e01\u0e41\u0e2a\u0e14\u0e07\u0e2b\u0e19\u0e49\u0e32\u0e02\u0e36\u0e49\u0e19\u0e21\u0e32\u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e01\u0e31\u0e19\u0e01\u0e48\u0e2d\u0e19\u0e17\u0e35\u0e48\u0e08\u0e30\u0e16\u0e39\u0e01\u0e01\u0e25\u0e31\u0e1a",
+   "steps": 5,
+   "evidence": [],
+   "seconds": 36.1
+  },
+  "c25": {
+   "status": "inconclusive",
+   "summary": "The recording does not provide clear evidence to confirm or refute the claim that the game was won in 8 moves.",
+   "steps": 9,
+   "evidence": [
+    "The call@24 app_wait_for timed out waiting for the text 'Best: 8 moves', instead finding 'No best yet'."
+   ],
+   "seconds": 37.5
+  },
+  "c26": {
+   "status": "inconclusive",
+   "summary": "The call timed out waiting for 'Smallest wingspan on the left' and found 'Sorted!' instead, but the screen text does not provide enough detail to confirm or refute the claim.",
+   "steps": 15,
+   "evidence": [
+    "call@11 timed out waiting for 'Smallest wingspan on the left' and found 'Sorted!' instead.",
+    "call@10 confirmed that Glasswing was in slot 4.",
+    "call@9 dragged Glasswing to slot 4."
+   ],
+   "seconds": 39.1
+  },
+  "c27": {
+   "status": "inconclusive",
+   "summary": "The recording does not provide any evidence to confirm or refute the claim that the Atlas butterfly has a wingspan of 25 cm.",
+   "steps": 30,
+   "evidence": [
+    "No specific information about the Atlas butterfly or its wingspan was found in the recording."
+   ],
+   "seconds": 82.9
+  },
+  "c28": {
+   "status": "inconclusive",
+   "summary": "The initial order of butterflies in the tray before any drag actions cannot be determined from the provided recording.",
+   "steps": 30,
+   "evidence": [
+    "No screen or call provides the initial order of butterflies in the tray."
+   ],
+   "seconds": 55.1
+  }
+ }
+}
