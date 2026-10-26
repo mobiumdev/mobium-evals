@@ -1,0 +1,163 @@
+{
+ "judge": "Claude Code subagents (general-purpose, the session's model), four claims each, twins on different judges, recordings under anonymous names; tools: mobium recording + mobium verdict only (mobium verifier-check d362b11)",
+ "date": "2026-10-25",
+ "verdicts": {
+  "c01": {
+   "judge": "J1",
+   "status": "passed",
+   "evidence": "call@7 tapped card_2; call@8 screen shows Card 3, Blue Morpho"
+  },
+  "c04": {
+   "judge": "J1",
+   "status": "failed",
+   "evidence": "call@9: Moves: 2, not 1; call@8 Card 8 Monarch matched"
+  },
+  "c08": {
+   "judge": "J1",
+   "status": "failed",
+   "evidence": "call@22: You found all 8 pairs in 16 moves"
+  },
+  "c13": {
+   "judge": "J1",
+   "status": "inconclusive",
+   "evidence": "never terminated or relaunched after the game (call@23 back, call@24 best)"
+  },
+  "c02": {
+   "judge": "J2",
+   "status": "failed",
+   "evidence": "call@8: Card 3 shows Blue Morpho; no Monarch anywhere"
+  },
+  "c03": {
+   "judge": "J2",
+   "status": "passed",
+   "evidence": "call@8 Card 4 and 8 Monarch matched; call@9 Moves: 1"
+  },
+  "c09": {
+   "judge": "J2",
+   "status": "failed",
+   "evidence": "call@22: Cards 3 and 11 face down, Pairs: 7 of 8, completion never shown"
+  },
+  "c11": {
+   "judge": "J2",
+   "status": "passed",
+   "evidence": "call@22 8 pairs in 8 moves; call@24 Best: 8 moves"
+  },
+  "c06": {
+   "judge": "J4",
+   "status": "failed",
+   "evidence": "call@7/8/9: Cards 1 and 2 face down after the mismatch, Moves: 1"
+  },
+  "c10": {
+   "judge": "J4",
+   "status": "inconclusive",
+   "evidence": "no audio recorded; call@22 pairs matched"
+  },
+  "c14": {
+   "judge": "J4",
+   "status": "passed",
+   "evidence": "call@14 sortStatus Sorted!, slots 6, 9, 14, 25 cm"
+  },
+  "c15": {
+   "judge": "J4",
+   "status": "passed",
+   "evidence": "call@11 status Smallest wingspan on the left, slots 9, 14, 25, 6 cm"
+  },
+  "c05": {
+   "judge": "J3",
+   "status": "passed",
+   "evidence": "call@7/8/9: Cards 1 and 2 face down, Moves: 1, Pairs: 0 of 8"
+  },
+  "c07": {
+   "judge": "J3",
+   "status": "passed",
+   "evidence": "call@22 You found all 8 pairs in 8 moves; call@23 Pairs: 8 of 8"
+  },
+  "c12": {
+   "judge": "J3",
+   "status": "failed",
+   "evidence": "call@24: No best yet, not Best: 8 moves"
+  },
+  "c16": {
+   "judge": "J3",
+   "status": "failed",
+   "evidence": "call@11: Sorted! over slots 9, 14, 25, 6 cm"
+  },
+  "c19": {
+   "judge": "K3",
+   "status": "passed",
+   "evidence": "call@5: cards at four left and four top positions; screenshot 4x4"
+  },
+  "c22": {
+   "judge": "K3",
+   "status": "failed",
+   "evidence": "call@20 card 15, call@21 card 16"
+  },
+  "c25": {
+   "judge": "K3",
+   "status": "passed",
+   "evidence": "call@22: Moves: 8, 8 of 8, You found all 8 pairs in 8 moves; call@24 is the best score"
+  },
+  "c28": {
+   "judge": "K3",
+   "status": "passed",
+   "evidence": "call@6 screenshot: tray Swallowtail, Atlas, Owl, Glasswing"
+  },
+  "c17": {
+   "judge": "K1",
+   "status": "passed",
+   "evidence": "call@8 screenshot: card 3 face up with a blue face"
+  },
+  "c20": {
+   "judge": "K1",
+   "status": "failed",
+   "evidence": "call@22 8 moves; call@23 Play again button"
+  },
+  "c23": {
+   "judge": "K1",
+   "status": "passed",
+   "evidence": "call@8 Monarch matched; call@9 Moves: 2, Pairs: 1 of 8"
+  },
+  "c26": {
+   "judge": "K1",
+   "status": "passed",
+   "evidence": "call@10 Slot 4 Glasswing; call@11 Sorted!"
+  },
+  "c18": {
+   "status": "failed",
+   "summary": "Card 3 was face up (Blue Morpho) after the tap on card_2; the screenshot shows it filled in blue, not orange.",
+   "evidence": [
+    "call@7: tap testid=card_2 turned Card 3 face up (map lists 'Card 3, Blue Morpho')",
+    "call@8: screenshot after the wait shows Card 3 as a blue card labeled Blue Morpho; no orange card on screen"
+   ],
+   "judge": "K2"
+  },
+  "c21": {
+   "status": "passed",
+   "summary": "The 16 taps (call@6 to call@21) name card_0 to card_15 once each, at 16 distinct points; afterward all 16 cards show as matched and the status reads 8 pairs in 8 moves.",
+   "evidence": [
+    "call@6: first tap, testid=card_0 at (151, 537); calls 7-21 tap card_4,1,12,2,10,3,7,5,8,6,13,9,11,14,15, each once, each at a distinct point",
+    "call@21: screen after the last tap lists Card 1 to Card 16 all 'matched'",
+    "call@22: status says exactly 'You found all 8 pairs in 8 moves' (16 flips)"
+   ],
+   "judge": "K2"
+  },
+  "c24": {
+   "status": "inconclusive",
+   "summary": "No recorded screen shows both cards face up: after call@6 only Card 1 (Emerald) is up, and the screen kept after call@7 already shows every card face down. The recording neither shows nor rules out a moment with both up.",
+   "evidence": [
+    "call@6: screen after shows Card 1, Emerald face up and Card 2 face down",
+    "call@7: screen after the tap on card_1 shows Card 1 and Card 2 both face down"
+   ],
+   "judge": "K2"
+  },
+  "c27": {
+   "status": "passed",
+   "summary": "After sorting, the status reads Sorted! and the screenshot shows four slots Glasswing 6 cm, Swallowtail 9 cm, Owl 14 cm, Atlas 25 cm, with the tray empty; Atlas is the largest at 25 cm.",
+   "evidence": [
+    "call@13: drag of testid=sort_atlas onto slot_3, the last slot",
+    "call@14: sortStatus says exactly 'Sorted!'; screenshot shows Atlas 25 cm as largest of the four, tray empty"
+   ],
+   "judge": "K2"
+  }
+ }
+}
