@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- The nightly eval, at 03:00. Install with nightly/install.sh, which fills
+     in this machine's paths; remove with: launchctl bootout gui/$(id -u)/dev.mobium.evals-nightly -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>dev.mobium.evals-nightly</string>
+  <key>ProgramArguments</key>
+  <array><string>/bin/sh</string><string>__HERE__/nightly/nightly.sh</string></array>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>3</integer><key>Minute</key><integer>0</integer></dict>
+  <key>EnvironmentVariables</key>
+  <dict><key>HOME</key><string>__HOME__</string></dict>
+  <key>StandardOutPath</key><string>__HERE__/nightly/out/launchd.log</string>
+  <key>StandardErrorPath</key><string>__HERE__/nightly/out/launchd.log</string>
+</dict>
+</plist>
