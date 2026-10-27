@@ -39,7 +39,7 @@ echo "== $(date) nightly start"
 : "${NIGHTLY_IOS:=1}"
 # Simulators as name@runtime, comma-separated: by name, not UDID, so a
 # recreated simulator is still found.
-: "${NIGHTLY_IOS_SIMS:=iPhone 17 Pro@iOS-26-5,iPhone 18 Pro@iOS-27-0}"
+: "${NIGHTLY_IOS_SIMS:=iPhone 17 Pro@iOS-26-5,iPhone 18 Pro@iOS-27-0,iPhone Duo@iOS-27-1}"
 : "${NIGHTLY_IOS_TASKS:=}"     # empty: every task whose platforms include ios"
 export ANDROID_HOME PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:/opt/homebrew/bin:/usr/local/go/bin:$HOME/.local/bin:$PATH"
 export MOBIUM_HOME=/tmp/mobium-nightly   # its own daemon; the socket path stays short
