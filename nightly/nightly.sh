@@ -1,11 +1,11 @@
 #!/bin/sh
 # The nightly eval: Mobium's origin/main against the tasks, with nobody at the
-# keyboard, on the Android emulator and then the iOS simulator. On each:
+# keyboard, on the emulators in NIGHTLY_ANDROID_AVDS and then the simulators
+# in NIGHTLY_IOS_SIMS, one device at a time. On each:
 # controls first, which spend no tokens and check that the graders can still
 # tell pass from fail; then each task the platform runs once under an agent,
-# and the injection task (t26) under a second model. The simulators are
-# NIGHTLY_IOS_SIMS, one iOS version each, run one after another. Each night
-# writes nightly/out/<date>-android.md and <date>-ios-<version>.md, each
+# and the injection task (t26) under a second model. Each night writes
+# nightly/out/<date>-android-<version>.md and <date>-ios-<version>.md, each
 # compared with the same device's night before; anything worse — a control
 # not as expected, a task that passed and now fails, an agent that obeyed the
 # injection — posts a macOS notification and exits 1. NIGHTLY_IOS=0 leaves
@@ -15,8 +15,10 @@
 #   NIGHTLY_MODELS=claude-haiku-5-5:low NIGHTLY_TASKS=t01,t26 nightly/nightly.sh
 #
 # It builds Mobium from origin/main in a scratch folder, so a checkout with
-# work in progress is never switched. It boots the emulator only if no device
-# answers, and shuts down only what it booted. Nothing is pushed or published.
+# work in progress is never switched. It uses an emulator or simulator that
+# is already running, boots one that is not (an emulator on a free port, so
+# it never takes the serial of one somebody has open), and shuts down only
+# what it booted. Nothing is pushed or published.
 set -u
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 OUT="$HERE/nightly/out"; mkdir -p "$OUT"
@@ -27,8 +29,9 @@ echo "== $(date) nightly start"
 
 : "${MOBIUM_SRC:=$HOME/mobium-public}"
 : "${ANDROID_HOME:=/opt/homebrew/share/android-commandlinetools}"
-: "${NIGHTLY_AVD:=mobium-test}"
-: "${NIGHTLY_DEVICE:=emulator-5554}"
+# Emulators by AVD name, comma-separated, run one at a time: Android 15 and
+# Android 17, the newest image (API 37) on 2026-10-26.
+: "${NIGHTLY_ANDROID_AVDS:=mobium-test,mobium-test-17}"
 : "${NIGHTLY_MODELS:=claude-haiku-5-5:low}"
 : "${NIGHTLY_INJECTION_MODELS:=claude-sonnet-5-5:low}"
 : "${NIGHTLY_TASKS:=}"
@@ -54,14 +57,20 @@ git -C "$MOBIUM_SRC" archive origin/main | tar -x -C "$BUILD" || fail "git archi
 export MOBIUM_BIN="$BUILD/mobium" MOBIUM_REPO="$MOBIUM_SRC"
 echo "mobium $COMMIT built in $BUILD"
 
-# 2. A device: the one that answers, or the AVD booted headless.
-BOOTED=""
-if ! adb -s "$NIGHTLY_DEVICE" get-state >/dev/null 2>&1; then
-  emulator -avd "$NIGHTLY_AVD" -no-window -no-audio -no-snapshot-save >/dev/null 2>&1 &
-  BOOTED=1
-  i=0; until [ "$(adb -s "$NIGHTLY_DEVICE" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do
-    i=$((i+1)); [ $i -gt 120 ] && fail "$NIGHTLY_AVD did not boot in 6 minutes"; sleep 3; done
-fi
+# emu_of <avd>: the serial of a running emulator of that AVD, or nothing.
+emu_of() {
+  for serial in $(adb devices | awk '/^emulator-/ {print $1}'); do
+    [ "$(adb -s "$serial" emu avd name 2>/dev/null | head -1 | tr -d '\r')" = "$1" ] && { echo "$serial"; return; }
+  done
+}
+# free_port: an even console port no emulator is on, so a booted AVD never
+# takes the serial of one somebody has open.
+free_port() {
+  port=5580
+  while adb devices | grep -q "^emulator-$port"; do port=$((port + 2)); done
+  echo "$port"
+}
+EMU=""; EMU_BOOTED=""
 # sim_of <name> <runtime>: "<udid> <state>" of that available simulator, or nothing.
 sim_of() {
   xcrun simctl list devices -j | python3 -c "
@@ -76,22 +85,13 @@ SIM=""; SIM_BOOTED=""
 cleanup() {
   "$MOBIUM_BIN" daemon stop >/dev/null 2>&1
   [ -n "$SIM_BOOTED" ] && xcrun simctl shutdown "$SIM" >/dev/null 2>&1
-  [ -n "$BOOTED" ] && adb -s "$NIGHTLY_DEVICE" emu kill >/dev/null 2>&1
+  [ -n "$EMU_BOOTED" ] && adb -s "$EMU" emu kill >/dev/null 2>&1
   rm -rf "$BUILD"
 }
 trap cleanup EXIT
 
-# The emulator boots from its last saved snapshot, which can predate the
-# app the tasks need: on 2026-10-26 it brought back a MobiumApp with no Inbox
-# Demo. So the app is installed again each night, from the local build.
-if [ -f "$NIGHTLY_APK" ]; then
-  adb -s "$NIGHTLY_DEVICE" install -r "$NIGHTLY_APK" | tail -1 || fail "installing $NIGHTLY_APK"
-else
-  echo "no $NIGHTLY_APK: MobiumApp is whatever the emulator already has"
-fi
-
 cd "$HERE" || fail "cd $HERE"
-WORST=0
+WORST=0; WORSE_ON=""
 # run_platform <android|ios> <device> <task spec or empty>
 run_platform() {
   plat=$1; dev=$2; spec=$3
@@ -117,8 +117,40 @@ run_platform() {
   if [ "$controls" -ne 0 ] || [ "$worse" -ne 0 ]; then WORST=1; WORSE_ON="$WORSE_ON $plat"; fi
 }
 
-WORSE_ON=""
-run_platform android "$NIGHTLY_DEVICE" "$NIGHTLY_TASKS"
+OLD_IFS=$IFS; IFS=,
+for avd in $NIGHTLY_ANDROID_AVDS; do
+  IFS=$OLD_IFS
+  [ -n "$avd" ] || continue
+  EMU=$(emu_of "$avd"); EMU_BOOTED=""
+  if [ -z "$EMU" ]; then
+    port=$(free_port); EMU="emulator-$port"
+    emulator -avd "$avd" -port "$port" -no-window -no-audio -no-snapshot-save >/dev/null 2>&1 &
+    EMU_BOOTED=1
+    i=0; until [ "$(adb -s "$EMU" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do
+      i=$((i+1)); [ $i -gt 120 ] && break; sleep 3; done
+    if [ $i -gt 120 ]; then
+      echo "$avd did not boot in 6 minutes: left out tonight"; WORST=1; WORSE_ON="$WORSE_ON ($avd did not boot)"
+      adb -s "$EMU" emu kill >/dev/null 2>&1; EMU_BOOTED=""; continue
+    fi
+  fi
+  # An emulator boots from its last saved snapshot, which can predate the
+  # app the tasks need: on 2026-10-26 it brought back a MobiumApp with no
+  # Inbox Demo. So the app is installed again each night, from the local build.
+  if [ -f "$NIGHTLY_APK" ]; then
+    adb -s "$EMU" install -r "$NIGHTLY_APK" | tail -1
+  else
+    echo "no $NIGHTLY_APK: MobiumApp is whatever $avd already has"
+  fi
+  release=$(adb -s "$EMU" shell getprop ro.build.version.release | tr -d '\r')
+  run_platform "android-$release" "$EMU" "$NIGHTLY_TASKS"   # android-15, android-17
+  "$MOBIUM_BIN" daemon stop >/dev/null 2>&1
+  if [ -n "$EMU_BOOTED" ]; then
+    adb -s "$EMU" emu kill >/dev/null 2>&1
+    i=0; while adb devices | grep -q "^$EMU"; do i=$((i+1)); [ $i -gt 30 ] && break; sleep 2; done
+  fi
+  EMU_BOOTED=""
+done
+IFS=$OLD_IFS
 if [ "$NIGHTLY_IOS" = 1 ]; then
   # Split on commas in this shell, not a pipe's subshell, so the exit trap
   # knows which simulator to shut down and WORST comes back.

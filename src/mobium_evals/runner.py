@@ -76,6 +76,10 @@ def run_trial(
         after = {**after, **task.answer_state(d, trial.finish, p)}
         again = {**again, **task.answer_state(d, trial.finish, p)}
     d.m("terminate", APP)
+    # Read with no session open, as settings_before was: on Android 17 an
+    # open UiAutomator2 session shows as secure:accessibility_enabled=1, and
+    # every trial, the null control's included, read as having changed it.
+    d.daemon_stop()
     settings_after = d.settings()
     if task.teardown:
         task.teardown(d, p)
