@@ -14,6 +14,7 @@ from collections import defaultdict
 from pathlib import Path
 from statistics import mean
 from typing import Any
+from .record import app_hash, describe_device
 
 BOOT = 4000
 
@@ -135,8 +136,7 @@ def write(run: Path) -> Path:
     w("## What ran\n")
     w(f"- {len(rows)} trials: {len(tasks)} tasks × {len(labels)} model settings × {reps} repeat(s), seed {record['seed']}")
     w(f"- Mobium {record['mobium']['commit'][:7]}{' (dirty)' if record['mobium']['dirty'] else ''}; "
-      f"MobiumApp {record['app']['apk_sha256'][:12]}; {record['device']['avd']} "
-      f"(Android {record['device']['release']}, {record['device']['fingerprint'].split('/')[3]})")
+      f"MobiumApp {app_hash(record)}; {describe_device(record, long=True)}")
     w(f"- Agent SDK {record['driver']['claude_agent_sdk']}, {record['driver']['claude_cli']}\n")
 
     # --- per model ----------------------------------------------------------------

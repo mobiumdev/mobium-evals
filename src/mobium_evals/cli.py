@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 
 from .device import Device, HarnessError
-from .record import run_record
+from .record import app_hash, describe_device, run_record
 from . import report
 from .runner import run_trial
 from .tasks import TASKS
@@ -26,12 +26,16 @@ RUNS = Path(__file__).resolve().parents[2] / "runs"
 EXPECT = {"reference": True, "null": False, "wrong": False}
 
 
-def _tasks(spec: str | None) -> list:
-    if not spec:
-        return list(TASKS.values())
-    picked = [t for t in TASKS.values() if any(t.id.startswith(p) for p in spec.split(","))]
-    if not picked:
+def _tasks(spec: str | None, platform: str = "android") -> list:
+    """The tasks the spec names that run on the device's platform (each
+    task's `platforms`)."""
+    named = list(TASKS.values()) if not spec else [t for t in TASKS.values() if any(t.id.startswith(p) for p in spec.split(","))]
+    if not named:
         sys.exit(f"no task matches {spec!r}; there are {', '.join(TASKS)}")
+    picked = [t for t in named if platform in t.platforms]
+    if not picked:
+        sys.exit(f"none of {', '.join(t.id for t in named)} runs on {platform}; "
+                 f"those that do: {', '.join(t.id for t in TASKS.values() if platform in t.platforms)}")
     return picked
 
 
@@ -48,7 +52,7 @@ def _new_run(d: Device, mode: str, args: argparse.Namespace) -> Path:
     rec = run_record(d, model=getattr(args, "model", None), effort=getattr(args, "effort", None), seed=seed, mode=mode)
     (run / "record.json").write_text(json.dumps(rec, indent=2))
     print(f"run {run.name}: mobium {rec['mobium']['commit'][:7]}{' (dirty)' if rec['mobium']['dirty'] else ''}, "
-          f"app {rec['app']['apk_sha256'][:12]}, {rec['device']['avd']} (Android {rec['device']['release']})")
+          f"app {app_hash(rec)}, {describe_device(rec)}")
     return run
 
 
@@ -66,7 +70,7 @@ def cmd_controls(args: argparse.Namespace) -> int:
     d = Device(args.device)
     run = _new_run(d, "controls", args)
     bad = 0
-    for task in _tasks(args.tasks):
+    for task in _tasks(args.tasks, d.platform):
         for mode in args.modes.split(","):
             if mode == "wrong" and task.wrong is None:
                 continue
@@ -115,6 +119,8 @@ def recover(d: Device, run: Path, why: str) -> None:
         log("the device answers adb; retrying the trial")
         return
     rec = json.loads((run / "record.json").read_text())
+    if rec["device"].get("platform") == "ios":
+        raise HarnessError("the simulator stopped answering; a simulator is not revived by the harness")
     subprocess.run([str(MOBIUM), "daemon", "stop"], capture_output=True, timeout=60)
     subprocess.run([str(MOBIUM), "shutdown", d.serial], capture_output=True, timeout=120)
     boot = subprocess.run([str(MOBIUM), "boot", rec["device"]["avd"]], capture_output=True, text=True, timeout=300)
@@ -143,7 +149,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     # a run cut short, or a device that drifts, stays a fair comparison.
     with (run / "trials.jsonl").open("a") as log:
         for i in range(args.repeats):
-            for task in _tasks(args.tasks):
+            for task in _tasks(args.tasks, d.platform):
                 p = params(task, args.seed, i + 1)
                 for model, effort in models:
                     out = run / task.id / model / f"r{i + 1}"
