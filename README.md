@@ -256,7 +256,12 @@ Android 17, the newest image), the one already running or booted headless
 on a free port, and given MobiumApp's local build again, since its snapshot
 can hold an older one; then each simulator in
 `NIGHTLY_IOS_SIMS`, by name and runtime (default `iPhone 17 Pro@iOS-26-5,iPhone
-18 Pro@iOS-27-0`), booted and shut down one at a time. On each: every task's
+18 Pro@iOS-27-0,iPhone Duo@iOS-27-1`; iOS 27.1's runtime has only the iPhone
+Duo), booted and shut down one at a time. The iPhone Duo's home screen has
+two pages and MobiumApp lands on the second, so an agent there starts with
+no icon in view: in the first trial one Haiku run of three said, honestly,
+that it could not find the app, and its task can pass one night and fail
+the next for that alone. On each: every task's
 controls, each task the platform runs once under the agent
 (`claude-haiku-5-5:low`), and t26 twice more under `claude-sonnet-5-5:low`.
 `nightly/summarize.py` writes `nightly/out/<date>-android-<version>.md` and
