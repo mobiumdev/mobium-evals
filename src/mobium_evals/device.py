@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -101,6 +102,20 @@ class Device:
         (record.py, side_effects)."""
         if self.platform == "ios":
             return {}
+        # On Android 17 an open UiAutomator2 session shows as
+        # accessibility_enabled=1 with no accessibility service set, and it
+        # goes back to 0 within three seconds of the session ending
+        # (measured on the API 37 emulator). Read in that window, every
+        # trial looked as if it had turned accessibility on; so a read that
+        # shows only the automation connection waits for it to close.
+        for _ in range(10):
+            out = self._settings_once()
+            if out.get("secure:accessibility_enabled") != "1" or out.get("secure:enabled_accessibility_services", "") not in ("", "null"):
+                return out
+            time.sleep(1)
+        return out
+
+    def _settings_once(self) -> dict[str, str]:
         out: dict[str, str] = {}
         for ns in ("system", "secure", "global"):
             for line in self.shell(f"settings list {ns}").splitlines():
