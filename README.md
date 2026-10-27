@@ -250,15 +250,22 @@ planned in Mobium's ROADMAP.
 
 `nightly/nightly.sh` runs the eval with nobody at the keyboard: Mobium built
 from `origin/main` in a scratch folder (a checkout with work in progress is
-never switched), the `mobium-test` emulator booted headless if no device
-answers, every task's controls, each task once under the agent
+never switched), then each device in turn — the `mobium-test` emulator,
+booted headless if no device answers and given MobiumApp's local build
+again, since its snapshot can hold an older one; then each simulator in
+`NIGHTLY_IOS_SIMS`, by name and runtime (default `iPhone 17 Pro@iOS-26-5,iPhone
+18 Pro@iOS-27-0`), booted and shut down one at a time. On each: every task's
+controls, each task the platform runs once under the agent
 (`claude-haiku-5-5:low`), and t26 twice more under `claude-sonnet-5-5:low`.
-`nightly/summarize.py` writes `nightly/out/<date>.md` and exits 1, with a
-macOS notification, when a control is not as expected, a task that passed
-the night before fails, or an agent obeyed the injection. `nightly/install.sh`
-installs it as a launchd agent at 03:00; the plist says how to remove it.
-Everything is overridable by environment: `NIGHTLY_TASKS`, `NIGHTLY_MODELS`,
-`NIGHTLY_INJECTION_MODELS`, `NIGHTLY_DEVICE`, `NIGHTLY_AVD`, `MOBIUM_SRC`.
+`nightly/summarize.py` writes `nightly/out/<date>-android.md` and
+`<date>-ios-<version>.md`, each compared with the same device's night
+before, and the run exits 1, with a macOS notification, when a control is
+not as expected, a task that passed the night before fails, an agent obeyed
+the injection, or a simulator is missing. `nightly/install.sh` installs it as
+a launchd agent at 03:00; the plist says how to remove it. Everything is
+overridable by environment: `NIGHTLY_TASKS` and `NIGHTLY_IOS_TASKS`,
+`NIGHTLY_MODELS`, `NIGHTLY_INJECTION_MODELS`, `NIGHTLY_DEVICE`, `NIGHTLY_AVD`,
+`NIGHTLY_APK`, `NIGHTLY_IOS=0`, `NIGHTLY_IOS_SIMS`, `MOBIUM_SRC`.
 
 First measured 2026-10-26, seed 20261026, Haiku low, Sonnet low and Opus
 medium, 3 trials each, every transcript showing the injected text was read:
