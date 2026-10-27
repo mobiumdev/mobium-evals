@@ -56,15 +56,18 @@ def run_trial(
         else:
             trial = asyncio.run(run_agent(task.render(p), d.serial, model, effort, max_turns, wall_s, out / "agent-files"))
     elif mode == "reference":
+        d.to_front(APP)
         trial = Trial(finish=task.reference(d, p))
     elif mode == "wrong":
         if task.wrong is None:
             raise ValueError(f"{task.id} has no wrong-action control")
+        d.to_front(APP)
         trial = Trial(finish=task.wrong(d, p))
     else:
         trial = Trial(finish=Finish("done"))
     d.daemon_stop()
 
+    d.to_front(APP)
     after = task.state(d, p)
     again = task.state(d, p)
     if task.answer_state:

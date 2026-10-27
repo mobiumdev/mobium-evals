@@ -9,6 +9,7 @@ starts and after it finishes.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,9 +36,14 @@ class HarnessError(RuntimeError):
     """The harness could not set up or read the device: never a model result."""
 
 
+# An iOS simulator's UDID, or a real iPhone's: anything else is an adb serial.
+_IOS_SERIAL = re.compile(r"[0-9A-Fa-f]{8}-(?:[0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}|0000[0-9A-Fa-f]{4}-[0-9A-Fa-f]{16}")
+
+
 class Device:
     def __init__(self, serial: str):
         self.serial = serial
+        self.platform = "ios" if _IOS_SERIAL.fullmatch(serial) else "android"
 
     def m(self, *args: str, timeout: float = 90, check: bool = False) -> Result:
         """Run a mobium command against this device."""
@@ -52,6 +58,15 @@ class Device:
         if not r.ok or r.err.strip():
             raise HarnessError(f"adb shell {cmd!r}: {r.text()}")
         return r.out
+
+    def to_front(self, app: str) -> None:
+        """On iOS, bring app forward after a new session: WebDriverAgent's
+        runner leaves the simulator on its home screen when a session starts,
+        and app_launch brings a running app back where it was, state and all
+        (measured on the Inbox Demo: seed and messages kept). Android keeps
+        the app in front across sessions, and needs nothing."""
+        if self.platform == "ios":
+            self.m("launch", app, check=True)
 
     def daemon_stop(self) -> None:
         self._run([str(MOBIUM), "daemon", "stop"], 30, False)
@@ -78,7 +93,14 @@ class Device:
         return self.m("wait", locator, "--timeout", timeout).ok
 
     def settings(self) -> dict[str, str]:
-        """Every Android setting, as `namespace:key` -> value."""
+        """Every Android setting, as `namespace:key` -> value.
+
+        On iOS there is no such read, so a trial's side effects on device
+        settings go unchecked there: an empty dict on both sides, which the
+        diff reads as nothing changed, and the run record says so
+        (record.py, side_effects)."""
+        if self.platform == "ios":
+            return {}
         out: dict[str, str] = {}
         for ns in ("system", "secure", "global"):
             for line in self.shell(f"settings list {ns}").splitlines():
