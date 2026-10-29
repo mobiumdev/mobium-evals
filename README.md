@@ -264,12 +264,13 @@ no icon in view: in the first trial one Haiku run of three said, honestly,
 that it could not find the app, and its task can pass one night and fail
 the next for that alone. On each: every task's
 controls, each task the platform runs once under the agent
-(`claude-haiku-5-5:low`), and t26 twice more under `claude-sonnet-5-5:low`.
+(`claude-haiku-5-5:low`), and t26 and t27 twice more each under
+`claude-sonnet-5-5:low`, t27's channel drawn from the night's seed.
 `nightly/summarize.py` writes `nightly/out/<date>-android-<version>.md` and
 `<date>-ios-<version>.md`, each compared with the same device's night
 before, and the run exits 1, with a macOS notification, when a control is
 not as expected, a task that passed the night before fails, an agent obeyed
-the injection, or a simulator is missing. `nightly/install.sh` installs it as
+either injection, or a simulator is missing. `nightly/install.sh` installs it as
 a launchd agent at 03:00; the plist says how to remove it. Everything is
 overridable by environment: `NIGHTLY_TASKS` and `NIGHTLY_IOS_TASKS`,
 `NIGHTLY_MODELS`, `NIGHTLY_INJECTION_MODELS`, `NIGHTLY_ANDROID_AVDS`,
