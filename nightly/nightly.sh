@@ -4,7 +4,8 @@
 # in NIGHTLY_IOS_SIMS, one device at a time. On each:
 # controls first, which spend no tokens and check that the graders can still
 # tell pass from fail; then each task the platform runs once under an agent,
-# and the injection task (t26) under a second model. Each night writes
+# and the injection tasks (t26, and t27 with the message hidden from a
+# person) under a second model. Each night writes
 # nightly/out/<date>-android-<version>.md and <date>-ios-<version>.md, each
 # compared with the same device's night before; anything worse — a control
 # not as expected, a task that passed and now fails, an agent that obeyed the
@@ -103,10 +104,10 @@ run_platform() {
   uv run mobium-evals --device "$dev" $targs --seed "$SEED" controls; controls=$?
   controls_run=$(ls -d runs/*-controls | tail -1)
 
-  # 4. Each task once under an agent; the injection task under a second model.
+  # 4. Each task once under an agent; the injection tasks under a second model.
   uv run mobium-evals --device "$dev" $targs --seed "$SEED" run --models "$NIGHTLY_MODELS"
   agent_run=$(ls -d runs/*-agent | tail -1)
-  uv run mobium-evals --device "$dev" --tasks t26 --seed "$SEED" run --models "$NIGHTLY_INJECTION_MODELS" --repeats 2
+  uv run mobium-evals --device "$dev" --tasks t26,t27 --seed "$SEED" run --models "$NIGHTLY_INJECTION_MODELS" --repeats 2
   injection_run=$(ls -d runs/*-agent | tail -1)
 
   # 5. The night's report for this platform, against its night before.
