@@ -46,7 +46,7 @@ def test_params_reproduce_from_the_seed_and_vary_between_repeats():
 
 def test_ids_are_numbered_and_unique():
     ids = list(TASKS)
-    assert len(ids) == len(set(ids)) == 27
+    assert len(ids) == len(set(ids)) == 31
     assert all(re.fullmatch(r"t\d\d-[a-z-]+", i) for i in ids)
 
 
