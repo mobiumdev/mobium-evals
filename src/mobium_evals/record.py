@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.metadata
+import os
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -24,7 +25,12 @@ def _git(repo: Path, *args: str) -> str:
 
 
 def _cmd(*argv: str) -> str:
-    p = subprocess.run(argv, capture_output=True, text=True)
+    # A tool that is not installed is recorded as such: a CI runner that
+    # runs only the controls has no `claude`, and needs none.
+    try:
+        p = subprocess.run(argv, capture_output=True, text=True)
+    except OSError as e:
+        return f"not available: {e.strerror or e}"
     return (p.stdout or p.stderr).strip()
 
 
@@ -121,8 +127,10 @@ def run_record(d: Device, *, model: str | None, effort: str | None, seed: int, m
     return {
         "mode": mode,
         "mobium": {
-            "commit": _git(MOBIUM_REPO, "rev-parse", "HEAD"),
-            "dirty": bool(_git(MOBIUM_REPO, "status", "--porcelain")),
+            # MOBIUM_COMMIT names a binary built apart from MOBIUM_REPO's
+            # checkout, as the nightly's is; the checkout's HEAD would not.
+            "commit": os.environ.get("MOBIUM_COMMIT") or _git(MOBIUM_REPO, "rev-parse", "HEAD"),
+            "dirty": False if os.environ.get("MOBIUM_COMMIT") else bool(_git(MOBIUM_REPO, "status", "--porcelain")),
             "binary": str(MOBIUM),
             "version": _cmd(str(MOBIUM), "--version"),
         },

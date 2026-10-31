@@ -28,13 +28,33 @@ def test_t25_is_graded_on_the_device_and_its_answers_parse():
     assert refactor._parse("```json\n" + refactor.FOLD + "\n```")
     assert refactor._parse("not json") is None and refactor._parse(None) is None
     assert refactor._parse('{"tests": []}') is None
-    caught = {"none": "pass", "stale-code-message": "fail", "expired-accepted": "fail"}
+    caught = {"none": "pass", "stale-code-message": "caught", "expired-accepted": "caught"}
     f = Finish("done")
     assert t.goal({}, caught, f, {})
-    assert not t.goal({}, {**caught, "stale-code-message": "pass"}, f, {})
+    assert not t.goal({}, {**caught, "stale-code-message": "missed"}, f, {})
+    assert not t.goal({}, {**caught, "stale-code-message": "failed, not for the bug"}, f, {})
     assert not t.goal({}, {**caught, "none": "fail"}, f, {})
     assert not t.goal({}, {"answer": "not a test file"}, f, {})
     assert "each" in refactor.guide_section()
+
+
+def test_t25_counts_a_bug_caught_only_by_what_the_failed_step_saw():
+    from mobium_evals.refactor import caught
+
+    # The step messages `mobium test` gave on the Android 15 emulator, 2026-10-31.
+    stale = ('step 10 of 14 (app_wait_for) failed: timed out after 3.03s waiting for testid=codeMessage to say '
+             'exactly "That code has expired." — its text is "Add $6.00 more to use this code."')
+    expired = ('step 7 of 8 (app_wait_for) failed: timed out after 10.034s waiting for testid=codeMessage to say '
+               'exactly "That code has expired." — its text is "EXPIRED20 applied: 20% off"')
+    slow = 'step 3 of 8 (app_wait_for) failed: timed out after 3s waiting for testid=catalogList — it is not on screen'
+    same = ('step 4 of 8 (app_wait_for) failed: timed out waiting for testid=codeMessage to say exactly '
+            '"That code has expired." — its text is "That code has expired. "')
+    assert caught("stale-code-message", [stale])
+    assert caught("expired-accepted", [expired])
+    assert not caught("stale-code-message", [slow]) and not caught("expired-accepted", [slow])
+    assert not caught("stale-code-message", [expired])
+    assert not caught("stale-code-message", [same])
+    assert not caught("stale-code-message", [])
 
 
 def test_params_reproduce_from_the_seed_and_vary_between_repeats():

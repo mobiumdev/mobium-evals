@@ -258,9 +258,11 @@ planned in Mobium's ROADMAP.
 from `origin/main` in a scratch folder (a checkout with work in progress is
 never switched), then each device in turn — each emulator in
 `NIGHTLY_ANDROID_AVDS` (default `mobium-test,mobium-test-17`: Android 15 and
-Android 17, the newest image), the one already running or booted headless
-on a free port, and given MobiumApp's local build again, since its snapshot
-can hold an older one; then each simulator in
+Android 17, the newest image), the one already running or cold-booted headless
+by `mobium boot` on a console port no emulator holds (not `emulator -port`:
+an emulator given its port starts no gRPC control port, and t23's audio
+capture is refused), and given MobiumApp's local build again, since a boot
+can come back without it or with an older one, and Morpho Market's for t25 (`NIGHTLY_SHOP_APK`); then each simulator in
 `NIGHTLY_IOS_SIMS`, by name and runtime (default `iPhone 17 Pro@iOS-26-5,iPhone
 18 Pro@iOS-27-0,iPhone Duo@iOS-27-1`; iOS 27.1's runtime has only the iPhone
 Duo), booted and shut down one at a time. The iPhone Duo's home screen has
@@ -274,12 +276,19 @@ controls, each task the platform runs once under the agent
 `nightly/summarize.py` writes `nightly/out/<date>-android-<version>.md` and
 `<date>-ios-<version>.md`, each compared with the same device's night
 before, and the run exits 1, with a macOS notification, when a control is
-not as expected, a task that passed the night before fails, an agent obeyed
-either injection, or a simulator is missing. `nightly/install.sh` installs it as
+not as expected, a task fails two nights running after passing the night
+before them (one night's failure is listed, since one agent trial a night
+can slip with nothing changed, as t08 did on 2026-10-30), an agent obeyed
+either injection, a simulator is missing, or a run stopped part way. A run
+stopped by a harness fault writes no `summary.json`; the report counts what
+its `trials.jsonl` holds and names the fault, where until 2026-10-30 it said
+"0 of 0". An emulator that stops answering is booted again on its own port,
+so the serial the night holds still names it, and each run records the
+commit it built (`MOBIUM_COMMIT`), not the checkout's HEAD. `nightly/install.sh` installs it as
 a launchd agent at 03:00; the plist says how to remove it. Everything is
 overridable by environment: `NIGHTLY_TASKS` and `NIGHTLY_IOS_TASKS`,
 `NIGHTLY_MODELS`, `NIGHTLY_INJECTION_MODELS`, `NIGHTLY_ANDROID_AVDS`,
-`NIGHTLY_APK`, `NIGHTLY_IOS=0`, `NIGHTLY_IOS_SIMS`, `MOBIUM_SRC`.
+`NIGHTLY_APK`, `NIGHTLY_SHOP_APK`, `NIGHTLY_IOS=0`, `NIGHTLY_IOS_SIMS`, `MOBIUM_SRC`.
 
 On Android 17 an open UiAutomator2 session shows as
 `secure:accessibility_enabled=1`, and goes back to 0 within three seconds of
@@ -305,6 +314,19 @@ foreground), so an agent opens MobiumApp first — tapping its icon or
 brings it forward before its own reads. iOS has no read of device
 settings, so a trial's side effects there go unchecked, and the record
 says so. A real iPhone is not run yet.
+
+### The controls on GitHub
+
+`.github/workflows/controls.yml` runs every Android task's controls each
+night on a GitHub-hosted Android 15 emulator (x86_64, Google APIs, Pixel 7),
+and on every pull request. The controls drive no model, so it costs nothing;
+it is what tells, with no machine of one's own, that the harness and Mobium
+can still tell pass from fail — the check that failed every launchd night
+from 2026-10-27 to 10-30 without a word to anyone. Mobium is built from
+mobiumdev/mobium's main; MobiumApp and Morpho Market come from their latest
+releases (`MobiumApp-android.apk`, `MorphoMarket-android.apk`). The run's
+folder and the emulator's log are kept as the run's artifact. Agents, and
+iOS, stay with `nightly/nightly.sh`.
 
 ## Running it
 
