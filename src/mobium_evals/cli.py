@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import sys
 import time
@@ -98,6 +99,34 @@ def _models(args: argparse.Namespace) -> list[tuple[str, str]]:
     return [(args.model, args.effort)]
 
 
+def _boot_same_serial(d: Device, avd: str) -> str:
+    """Boot the AVD again with `mobium boot`, and stop the run if it comes
+    back under another serial than the one the run and its caller hold: on
+    2026-10-27 to 10-30 a nightly emulator on 5580 came back as 5554, and
+    every call after it failed. Booted on the lowest free console port, it
+    comes back where it was when that is where the nightly put it. Not
+    `emulator -port`, which would pin the serial: an emulator given its port
+    starts no gRPC control port, and audio capture is refused."""
+    import subprocess
+
+    from .device import MOBIUM
+
+    p = subprocess.run([str(MOBIUM), "--json", "boot", avd], capture_output=True, text=True, timeout=360)
+    try:
+        serial = json.loads(p.stdout)["device"]
+    except (ValueError, KeyError, TypeError):
+        raise HarnessError(f"{avd} did not boot again: {(p.stdout or p.stderr).strip()[:300]}")
+    if serial != d.serial:
+        raise HarnessError(f"{avd} booted again as {serial}, not {d.serial}: the run cannot go on against it")
+    # Booted is not ready: `pm path` failed with nothing said seconds after
+    # boot answered (2026-10-30), and the app check below needs it.
+    for _ in range(60):
+        if d.adb("shell", "pm", "path", "android").out.startswith("package:"):
+            return f"booted {avd} as {serial}"
+        time.sleep(1)
+    raise HarnessError(f"{avd} booted again as {serial}, but its package manager never answered")
+
+
 def recover(d: Device, run: Path, why: str) -> None:
     """After a harness fault: if the device no longer answers adb, restart it
     and confirm it still holds the app build the run recorded. Every step is
@@ -123,8 +152,14 @@ def recover(d: Device, run: Path, why: str) -> None:
         raise HarnessError("the simulator stopped answering; a simulator is not revived by the harness")
     subprocess.run([str(MOBIUM), "daemon", "stop"], capture_output=True, timeout=60)
     subprocess.run([str(MOBIUM), "shutdown", d.serial], capture_output=True, timeout=120)
-    boot = subprocess.run([str(MOBIUM), "boot", rec["device"]["avd"]], capture_output=True, text=True, timeout=300)
-    log(f"the device did not answer adb: shut down and booted again — {boot.stdout.strip() or boot.stderr.strip()}")
+    boot = _boot_same_serial(d, rec["device"]["avd"])
+    log(f"the device did not answer adb: shut down and booted again — {boot}")
+    # A cold boot can come back without an app installed in the session
+    # before it (MobiumApp, 2026-10-30), so the APKs the run was given are
+    # installed again; the build check below still holds them to the record.
+    for apk in filter(None, os.environ.get("MOBIUM_EVALS_APKS", "").split(os.pathsep)):
+        r = d.adb("install", "-r", apk, timeout=180)
+        log(f"installed {Path(apk).name} again: {r.out.strip().splitlines()[-1] if r.out.strip() else r.text()[:200]}")
     if _app(d)["apk_sha256"] != rec["app"]["apk_sha256"]:
         log("the app build changed across the restart: stopping")
         raise HarnessError("the app build changed across an emulator restart; see notes.txt")

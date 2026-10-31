@@ -513,8 +513,9 @@ DONT_SAVE = Task(
     goal=lambda b, a, f, p: a["outcome"] == "three-button: Don't Save",
     # Android draws alert captions in capitals; map gives the text as written.
     reference=lambda d, p: _raise_and(d, "threeButtonBtn", lambda d: d.m("tap", "text=Don't Save,role=button", check=True)),
-    # W3C accept presses the positive button: Save.
-    wrong=lambda d, p: _raise_and(d, "threeButtonBtn", lambda d: d.m("alert", "accept", check=True)),
+    # Save, the button W3C accept would press; Mobium refuses accept on three
+    # buttons, so the control names it.
+    wrong=lambda d, p: _raise_and(d, "threeButtonBtn", lambda d: d.m("alert", "--button", "Save", check=True)),
     irreversible=lambda a, p: a["outcome"] == "three-button: Save",
     cites=(63, 106),
 )

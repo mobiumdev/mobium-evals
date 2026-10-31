@@ -8,7 +8,7 @@
 # person) under a second model. Each night writes
 # nightly/out/<date>-android-<version>.md and <date>-ios-<version>.md, each
 # compared with the same device's night before; anything worse — a control
-# not as expected, a task that passed and now fails, an agent that obeyed the
+# not as expected, a task that passed and has failed two nights since, an agent that obeyed the
 # injection — posts a macOS notification and exits 1. NIGHTLY_IOS=0 leaves
 # the simulators out.
 #
@@ -17,8 +17,9 @@
 #
 # It builds Mobium from origin/main in a scratch folder, so a checkout with
 # work in progress is never switched. It uses an emulator or simulator that
-# is already running, boots one that is not (an emulator on a free port, so
-# it never takes the serial of one somebody has open), and shuts down only
+# is already running, boots one that is not (an emulator by `mobium boot`,
+# on a console port no emulator holds, so it never takes the serial of one
+# somebody has open), and shuts down only
 # what it booted. Nothing is pushed or published.
 set -u
 HERE=$(cd "$(dirname "$0")/.." && pwd)
@@ -37,7 +38,11 @@ echo "== $(date) nightly start"
 : "${NIGHTLY_INJECTION_MODELS:=claude-sonnet-5-5:low}"
 : "${NIGHTLY_TASKS:=}"
 : "${NIGHTLY_APK:=$HOME/mobium-app-public/android/app/build/outputs/apk/release/app-release.apk}"
+# Morpho Market, for t25: at 132e4a6 or later, with stale-code-message.
+: "${NIGHTLY_SHOP_APK:=$HOME/morpho-market-public/android/app/build/outputs/apk/release/app-release.apk}"
 : "${NIGHTLY_IOS:=1}"
+# The APKs the harness installs again when it has to reboot an emulator.
+export MOBIUM_EVALS_APKS="$NIGHTLY_APK:$NIGHTLY_SHOP_APK"
 # Simulators as name@runtime, comma-separated: by name, not UDID, so a
 # recreated simulator is still found.
 : "${NIGHTLY_IOS_SIMS:=iPhone 17 Pro@iOS-26-5,iPhone 18 Pro@iOS-27-0,iPhone Duo@iOS-27-1}"
@@ -53,6 +58,7 @@ fail() { echo "FAIL: $*"; printf '# Nightly %s\n\n**Did not run:** %s\n' "$DAY" 
 BUILD=$(mktemp -d /tmp/mobium-nightly-build.XXXXXX)
 git -C "$MOBIUM_SRC" fetch -q origin || fail "git fetch in $MOBIUM_SRC"
 COMMIT=$(git -C "$MOBIUM_SRC" rev-parse --short origin/main)
+export MOBIUM_COMMIT=$(git -C "$MOBIUM_SRC" rev-parse origin/main)   # what the run records, not the checkout's HEAD
 git -C "$MOBIUM_SRC" archive origin/main | tar -x -C "$BUILD" || fail "git archive"
 (cd "$BUILD" && go build -o "$BUILD/mobium" ./cmd/mobium) || fail "go build at $COMMIT"
 export MOBIUM_BIN="$BUILD/mobium" MOBIUM_REPO="$MOBIUM_SRC"
@@ -63,13 +69,6 @@ emu_of() {
   for serial in $(adb devices | awk '/^emulator-/ {print $1}'); do
     [ "$(adb -s "$serial" emu avd name 2>/dev/null | head -1 | tr -d '\r')" = "$1" ] && { echo "$serial"; return; }
   done
-}
-# free_port: an even console port no emulator is on, so a booted AVD never
-# takes the serial of one somebody has open.
-free_port() {
-  port=5580
-  while adb devices | grep -q "^emulator-$port"; do port=$((port + 2)); done
-  echo "$port"
 }
 EMU=""; EMU_BOOTED=""
 # sim_of <name> <runtime>: "<udid> <state>" of that available simulator, or nothing.
@@ -124,15 +123,15 @@ for avd in $NIGHTLY_ANDROID_AVDS; do
   [ -n "$avd" ] || continue
   EMU=$(emu_of "$avd"); EMU_BOOTED=""
   if [ -z "$EMU" ]; then
-    port=$(free_port); EMU="emulator-$port"
-    emulator -avd "$avd" -port "$port" -no-window -no-audio -no-snapshot-save >/dev/null 2>&1 &
-    EMU_BOOTED=1
-    i=0; until [ "$(adb -s "$EMU" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; do
-      i=$((i+1)); [ $i -gt 120 ] && break; sleep 3; done
-    if [ $i -gt 120 ]; then
-      echo "$avd did not boot in 6 minutes: left out tonight"; WORST=1; WORSE_ON="$WORSE_ON ($avd did not boot)"
-      adb -s "$EMU" emu kill >/dev/null 2>&1; EMU_BOOTED=""; continue
+    # `mobium boot` cold-boots it on a console port no emulator holds, so
+    # nobody's open emulator loses its serial, and answers with the serial.
+    # Not `emulator -port`: an emulator given its port starts no gRPC
+    # control port, so audio capture (t23) is refused (measured 2026-10-30).
+    EMU=$("$MOBIUM_BIN" --json boot "$avd" 2>/dev/null | python3 -c 'import json, sys; print(json.load(sys.stdin)["device"])' 2>/dev/null)
+    if [ -z "$EMU" ]; then
+      echo "$avd did not boot: left out tonight"; WORST=1; WORSE_ON="$WORSE_ON ($avd did not boot)"; continue
     fi
+    EMU_BOOTED=1
   fi
   # An emulator boots from its last saved snapshot, which can predate the
   # app the tasks need: on 2026-10-26 it brought back a MobiumApp with no
@@ -141,6 +140,11 @@ for avd in $NIGHTLY_ANDROID_AVDS; do
     adb -s "$EMU" install -r "$NIGHTLY_APK" | tail -1
   else
     echo "no $NIGHTLY_APK: MobiumApp is whatever $avd already has"
+  fi
+  if [ -f "$NIGHTLY_SHOP_APK" ]; then
+    adb -s "$EMU" install -r "$NIGHTLY_SHOP_APK" | tail -1
+  else
+    echo "no $NIGHTLY_SHOP_APK: t25 needs Morpho Market and stops the run without it"
   fi
   release=$(adb -s "$EMU" shell getprop ro.build.version.release | tr -d '\r')
   run_platform "android-$release" "$EMU" "$NIGHTLY_TASKS"   # android-15, android-17
