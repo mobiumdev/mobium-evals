@@ -18,6 +18,7 @@ import json
 import os
 import random
 import re
+import sys
 import tempfile
 import time
 from dataclasses import dataclass, field
@@ -906,16 +907,36 @@ VERSION = Task(
 # --- 23. what the app plays -------------------------------------------------------------
 
 
+def _loads(d: Device) -> str:
+    """The Mac's load and the device's, 1/5/15 minutes. On 2026-10-31 the
+    nightly's reference heard each tone in pieces on both emulators, every
+    attempt, and never again in four runs that evening at a load of 3-5; the
+    Mac had booted an hour before. Recorded so the next split says whether
+    either machine was busy."""
+    host = " ".join(f"{x:.1f}" for x in os.getloadavg())
+    try:
+        guest = " ".join(d.adb("shell", "cat", "/proc/loadavg", timeout=15).out.split()[:3]) or "unread"
+    except HarnessError:  # a reading must never be what fails the reference
+        guest = "unread"
+    return f"load: host {host}, device {guest}"
+
+
 def _audio_reference(d: Device, p: P) -> Finish:
+    before = _loads(d)
     with tempfile.TemporaryDirectory(prefix="mev-audio-") as tmp:
         d.m("audio", "start", check=True)
         d.m("tap", "testid=audioSequence", check=True)
         time.sleep(7)  # a second's lead-in, 2 s, a second's gap, 2 s
         r = d.m("--json", "audio", "stop", "-o", f"{tmp}/a.wav", check=True)
+    after = _loads(d)
     timeline = json.loads(r.out).get("timeline") or []
     found = [round(s["hz"]) for s in timeline if s.get("sound") and s.get("hz")]
+    # Every attempt, pass or not, so a split can be set beside the loads of
+    # the nights that heard two tones.
+    print(f"t23 reference heard {found}; before, {before}; after, {after}", file=sys.stderr, flush=True)
     if len(found) != 2:
-        raise HarnessError(f"the reference heard {found}, not two pitches: {r.out[:300]}")
+        raise HarnessError(f"the reference heard {found}, not two pitches ({before} before, {after} after): "
+                           f"{r.out[:300]}")
     return done(answer=f"{found[0]} Hz, then {found[1]} Hz")
 
 
