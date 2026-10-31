@@ -35,9 +35,9 @@ jobs:
       MOBIUM_HOME: /home/runner/mobium-home
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           repository: mobiumdev/mobium
           path: mobium
@@ -55,7 +55,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: mobium/go.mod
 
@@ -69,7 +69,7 @@ jobs:
             echo "MOBIUM_COMMIT=$(git rev-parse HEAD)"
           } >> "$GITHUB_ENV"
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync
 
       - name: Apps under test
@@ -134,7 +134,7 @@ jobs:
           "$MOBIUM_BIN" daemon stop || true
           adb emu kill || true
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: controls-android-15
@@ -153,14 +153,14 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           repository: mobiumdev/mobium
           path: mobium
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: mobium/go.mod
 
@@ -176,7 +176,7 @@ jobs:
             echo "MOBIUM_HOME=$RUNNER_TEMP/mh"
           } >> "$GITHUB_ENV"
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync
 
       - name: Simulator and MobiumApp
@@ -201,7 +201,7 @@ jobs:
           "$MOBIUM_BIN" daemon stop || true
           xcrun simctl shutdown all || true
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: controls-ios-27
