@@ -147,6 +147,26 @@ def recover(d: Device, run: Path, why: str) -> None:
     notes = run / "notes.txt"
     log = lambda s: notes.open("a").write(f"{time.strftime('%H:%M:%S')} {s}\n")  # noqa: E731
     log(f"harness fault — {why}")
+    # The job log is what a CI reader has; notes.txt is an artifact away.
+    print(f"harness fault — {why}", file=sys.stderr, flush=True)
+    if d.platform == "ios":
+        # A simulator never answers adb, so asking adb called every iOS
+        # fault "stopped answering" and the cause stayed in notes.txt
+        # (GitHub's xcode-27 runner, 2026-10-31: a launch that timed out in
+        # simctl). Ask the simulator itself; one that answers gets the trial
+        # again, as an Android device that answers adb does.
+        try:
+            alive = subprocess.run(["xcrun", "simctl", "spawn", d.serial, "/usr/bin/true"],
+                                   capture_output=True, timeout=30).returncode == 0
+        except subprocess.TimeoutExpired:
+            alive = False
+        if alive:
+            log("the simulator answers simctl; retrying the trial")
+            return
+        log("the simulator did not answer simctl spawn within 30 s")
+        raise HarnessError("the simulator stopped answering after the harness fault above; "
+                           "a simulator is not revived by the harness")
+
     def answers() -> bool:
         try:
             return subprocess.run(["adb", "-s", d.serial, "shell", "echo", "ok"], capture_output=True,
@@ -165,8 +185,6 @@ def recover(d: Device, run: Path, why: str) -> None:
             log("the device was offline and answers adb after a reconnect; retrying the trial")
             return
     rec = json.loads((run / "record.json").read_text())
-    if rec["device"].get("platform") == "ios":
-        raise HarnessError("the simulator stopped answering; a simulator is not revived by the harness")
     subprocess.run([str(MOBIUM), "daemon", "stop"], capture_output=True, timeout=60)
     subprocess.run([str(MOBIUM), "shutdown", d.serial], capture_output=True, timeout=120)
     boot = _boot_same_serial(d, rec["device"]["avd"])
