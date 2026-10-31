@@ -317,16 +317,21 @@ says so. A real iPhone is not run yet.
 
 ### The controls on GitHub
 
-`.github/workflows/controls.yml` runs every Android task's controls each
-night on a GitHub-hosted Android 15 emulator (x86_64, Google APIs, Pixel 7),
-and on every pull request. The controls drive no model, so it costs nothing;
+`.github/workflows/controls.yml` runs every task's controls each night, and
+on every pull request: the Android tasks on a GitHub-hosted Android 15
+emulator (x86_64, Google APIs, Pixel 7, 4 cores and 4 GB), and the iOS
+tasks on a new iPhone 18 Pro simulator (iOS 27.0) on the `xcode-27` image.
+It runs in mobiumdev's copy only, where GitHub's runners are free; a failed
+nightly run opens an issue (`failure-issue.yml`). The controls drive no model, so it costs nothing;
 it is what tells, with no machine of one's own, that the harness and Mobium
 can still tell pass from fail — the check that failed every launchd night
 from 2026-10-27 to 10-30 without a word to anyone. Mobium is built from
 mobiumdev/mobium's main; MobiumApp and Morpho Market come from their latest
-releases (`MobiumApp-android.apk`, `MorphoMarket-android.apk`). The run's
-folder and the emulator's log are kept as the run's artifact. Agents, and
-iOS, stay with `nightly/nightly.sh`.
+releases (`MobiumApp-android.apk`, `MorphoMarket-android.apk`,
+`MobiumApp-ios-simulator.zip`). Each job's run folder, and the emulator's
+log, are kept as the run's artifacts. Agents, and the Meta Quest lane, stay
+with `nightly/nightly.sh`: they need a model, and the Quest simulator a GPU
+and a Meta login.
 
 ## Running it
 

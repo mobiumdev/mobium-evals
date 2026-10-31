@@ -1,6 +1,7 @@
-# Every Android task's controls, each night, on a GitHub-hosted Android 15
-# emulator: the reference solution must pass, and doing nothing and the wrong
-# thing must fail. They drive no model and spend nothing, so this runs free;
+# Every task's controls, each night, on a GitHub-hosted Android 15 emulator
+# and an iOS 27 simulator: the reference solution must pass, and doing
+# nothing and the wrong thing must fail. They drive no model and spend
+# nothing, so this runs free;
 # what it catches is the harness or Mobium no longer able to tell pass from
 # fail — a control gone stale, a task that cannot set up, a device that stops
 # answering. Agents are measured by nightly/nightly.sh on a machine of one's
@@ -22,6 +23,10 @@ permissions:
 
 jobs:
   android-15:
+    # mobiumdev's copy only: GitHub's runners are free for a public
+    # repository, and a private copy would spend its monthly minutes
+    # repeating this run.
+    if: github.repository_owner == 'mobiumdev'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -58,9 +63,11 @@ jobs:
         working-directory: mobium
         run: |
           go build -o "$RUNNER_TEMP/mobium" ./cmd/mobium
-          echo "MOBIUM_BIN=$RUNNER_TEMP/mobium" >> "$GITHUB_ENV"
-          echo "MOBIUM_REPO=$GITHUB_WORKSPACE/mobium" >> "$GITHUB_ENV"
-          echo "MOBIUM_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          {
+            echo "MOBIUM_BIN=$RUNNER_TEMP/mobium"
+            echo "MOBIUM_REPO=$GITHUB_WORKSPACE/mobium"
+            echo "MOBIUM_COMMIT=$(git rev-parse HEAD)"
+          } >> "$GITHUB_ENV"
 
       - uses: astral-sh/setup-uv@v6
       - run: uv sync
@@ -76,9 +83,11 @@ jobs:
           cd "$ANDROID_HOME/cmdline-tools"
           curl -sSLo tools.zip https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip
           unzip -q tools.zip && mv cmdline-tools latest && rm tools.zip
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          echo "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
-          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          {
+            echo "$ANDROID_HOME/cmdline-tools/latest/bin"
+            echo "$ANDROID_HOME/emulator"
+            echo "$ANDROID_HOME/platform-tools"
+          } >> "$GITHUB_PATH"
 
       - name: SDK packages and AVD
         run: |
@@ -92,7 +101,7 @@ jobs:
         run: |
           nohup emulator -avd mobium-test -cores 4 -memory 4096 -no-window -no-snapshot -no-boot-anim -no-audio -no-metrics -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
           timeout 300 adb wait-for-device || { cat "$RUNNER_TEMP/emulator.log"; exit 1; }
-          for i in $(seq 1 180); do
+          for _ in $(seq 1 180); do
             [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] && break
             sleep 2
           done
@@ -103,7 +112,8 @@ jobs:
           # reference, 2026-10-30). Wait until a minute passes with none,
           # up to ten.
           prev=""; same=0
-          for i in $(seq 1 40); do
+          for _ in $(seq 1 40); do
+            # shellcheck disable=SC2016  # $n expands in the device's shell
             h=$(adb shell 'for n in global secure system; do settings list $n; done' | sha1sum | cut -c1-12)
             if [ "$h" = "$prev" ]; then same=$((same + 1)); else same=0; fi
             echo "settings $h, unchanged for $((same * 15)) s"
@@ -131,3 +141,68 @@ jobs:
           path: |
             runs/
             ${{ runner.temp }}/emulator.log
+
+  # The tasks that run on iOS, on a new iPhone 18 Pro simulator (iOS 27.0)
+  # on the xcode-27 image: GitHub's macOS runners run iOS simulators, though
+  # not Android emulators. MobiumApp comes from its latest release; Mobium
+  # builds WebDriverAgent for the simulator on first use, a few minutes.
+  ios-27:
+    if: github.repository_owner == 'mobiumdev'
+    runs-on: xcode-27
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/checkout@v5
+        with:
+          repository: mobiumdev/mobium
+          path: mobium
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: mobium/go.mod
+
+      - name: Build Mobium
+        working-directory: mobium
+        run: |
+          go build -o "$RUNNER_TEMP/mobium" ./cmd/mobium
+          {
+            echo "MOBIUM_BIN=$RUNNER_TEMP/mobium"
+            echo "MOBIUM_REPO=$GITHUB_WORKSPACE/mobium"
+            echo "MOBIUM_COMMIT=$(git rev-parse HEAD)"
+            # Short: the daemon's socket path must stay under 104 bytes.
+            echo "MOBIUM_HOME=$RUNNER_TEMP/mh"
+          } >> "$GITHUB_ENV"
+
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync
+
+      - name: Simulator and MobiumApp
+        run: |
+          runtime=$(xcrun simctl list runtimes -j | python3 -c 'import json, sys
+          rs = [r for r in json.load(sys.stdin)["runtimes"] if r["platform"] == "iOS" and r["isAvailable"] and r["version"].startswith("27.0")]
+          print(rs[0]["identifier"])')
+          sim=$(xcrun simctl create mobium-ci "iPhone 18 Pro" "$runtime")
+          xcrun simctl boot "$sim"
+          xcrun simctl bootstatus "$sim" -b > /dev/null
+          gh release download -R mobiumdev/mobium-app -p MobiumApp-ios-simulator.zip -D app
+          unzip -q app/MobiumApp-ios-simulator.zip -d app
+          xcrun simctl install "$sim" app/MobiumApp.app
+          echo "SIM=$sim" >> "$GITHUB_ENV"
+
+      - name: Controls
+        run: uv run mobium-evals --device "$SIM" --seed "$(date +%Y%m%d)" controls
+
+      - name: Stop
+        if: always()
+        run: |
+          "$MOBIUM_BIN" daemon stop || true
+          xcrun simctl shutdown all || true
+
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: controls-ios-27
+          path: runs/
