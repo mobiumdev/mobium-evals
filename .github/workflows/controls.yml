@@ -86,9 +86,11 @@ jobs:
           sdkmanager --install "emulator" "platform-tools" "system-images;android-35;google_apis;x86_64" > /dev/null
           avdmanager create avd -n mobium-test -d pixel_7 -k "system-images;android-35;google_apis;x86_64" | tail -1
 
+      # Four cores and 4 GB, of the runner's four and 16 GB: with the defaults,
+      # steps ran slowly enough to fail on time alone (t25, 2026-10-31).
       - name: Boot the emulator
         run: |
-          nohup emulator -avd mobium-test -no-window -no-snapshot -no-boot-anim -no-audio -no-metrics -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          nohup emulator -avd mobium-test -cores 4 -memory 4096 -no-window -no-snapshot -no-boot-anim -no-audio -no-metrics -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
           timeout 300 adb wait-for-device || { cat "$RUNNER_TEMP/emulator.log"; exit 1; }
           for i in $(seq 1 180); do
             [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ] && break
