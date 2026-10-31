@@ -875,7 +875,14 @@ DARK_MODE = Task(
     state=lambda d, p: {"night": _night(d)},
     goal=lambda b, a, f, p: a["night"] == "Night mode: yes",
     reference=lambda d, p: (d.m("appearance", "dark", check=True), done())[1],
-    own_settings=("secure:ui_night_mode",),
+    # The first switch to dark mode on a device also writes the custom
+    # schedule's defaults, once: on a new Android 15 emulator,
+    # dark_theme_custom_start_time, _end_time and ui_night_mode_custom_type
+    # appeared beside ui_night_mode, and a second switch changed
+    # ui_night_mode alone (measured 2026-10-30; GitHub's fresh emulator
+    # failed the reference on them).
+    own_settings=("secure:ui_night_mode", "secure:dark_theme_custom_start_time",
+                  "secure:dark_theme_custom_end_time", "secure:ui_night_mode_custom_type"),
     teardown=_light,
 )
 

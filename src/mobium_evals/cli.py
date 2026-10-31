@@ -75,7 +75,15 @@ def cmd_controls(args: argparse.Namespace) -> int:
         for mode in args.modes.split(","):
             if mode == "wrong" and task.wrong is None:
                 continue
-            row = run_trial(task, d, mode, run / task.id / mode, params(task, args.seed, 0))
+            trial = lambda: run_trial(task, d, mode, run / task.id / mode, params(task, args.seed, 0))  # noqa: E731
+            try:
+                row = trial()
+            except HarnessError as e:
+                # A device gone offline (GitHub's emulator at t25, 2026-10-30)
+                # is the harness's fault, as in an agent run: bring it back,
+                # say so in the notes, try the control once more.
+                recover(d, run, f"{task.id} {mode}: {e}")
+                row = trial()
             want = EXPECT[mode] or (mode == "null" and task.already_there)
             ok = row["passed"] == want and row["grader_deterministic"]
             bad += not ok
@@ -139,14 +147,23 @@ def recover(d: Device, run: Path, why: str) -> None:
     notes = run / "notes.txt"
     log = lambda s: notes.open("a").write(f"{time.strftime('%H:%M:%S')} {s}\n")  # noqa: E731
     log(f"harness fault — {why}")
-    try:
-        alive = subprocess.run(["adb", "-s", d.serial, "shell", "echo", "ok"], capture_output=True,
-                               text=True, timeout=15).stdout.strip() == "ok"
-    except subprocess.TimeoutExpired:
-        alive = False
-    if alive:
+    def answers() -> bool:
+        try:
+            return subprocess.run(["adb", "-s", d.serial, "shell", "echo", "ok"], capture_output=True,
+                                  text=True, timeout=15).stdout.strip() == "ok"
+        except subprocess.TimeoutExpired:
+            return False
+
+    if answers():
         log("the device answers adb; retrying the trial")
         return
+    # An emulator adb lists as offline can come back without a reboot.
+    subprocess.run(["adb", "reconnect", "offline"], capture_output=True, timeout=30)
+    for _ in range(6):
+        time.sleep(5)
+        if answers():
+            log("the device was offline and answers adb after a reconnect; retrying the trial")
+            return
     rec = json.loads((run / "record.json").read_text())
     if rec["device"].get("platform") == "ios":
         raise HarnessError("the simulator stopped answering; a simulator is not revived by the harness")

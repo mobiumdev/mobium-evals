@@ -95,8 +95,19 @@ jobs:
             sleep 2
           done
           [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ] || { tail -50 "$RUNNER_TEMP/emulator.log"; exit 1; }
-          # Let the launcher and Settings' first-boot work settle.
-          sleep 30
+          # A new device's first minutes rewrite its settings — Google Play
+          # services' flags, scheduler constants, about 100 keys — and a
+          # trial that ran through them was charged with the change (t01's
+          # reference, 2026-10-30). Wait until a minute passes with none,
+          # up to ten.
+          prev=""; same=0
+          for i in $(seq 1 40); do
+            h=$(adb shell 'for n in global secure system; do settings list $n; done' | sha1sum | cut -c1-12)
+            if [ "$h" = "$prev" ]; then same=$((same + 1)); else same=0; fi
+            echo "settings $h, unchanged for $((same * 15)) s"
+            [ "$same" -ge 4 ] && break
+            prev=$h; sleep 15
+          done
           adb install -r apks/MobiumApp-android.apk
           adb install -r apks/MorphoMarket-android.apk
 
