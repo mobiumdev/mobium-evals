@@ -135,6 +135,72 @@ def _boot_same_serial(d: Device, avd: str) -> str:
     raise HarnessError(f"{avd} booted again as {serial}, but its package manager never answered")
 
 
+# Seconds; a test makes them short.
+SIM_SPAWN_S, SIM_SHUTDOWN_S, SIM_BOOT_S = 30, 60, 300
+CORESIMULATOR = "com.apple.CoreSimulator.CoreSimulatorService"
+
+
+def _spawns(d: Device) -> bool:
+    """Whether the simulator runs a process: the least a working one does."""
+    import subprocess
+
+    try:
+        return subprocess.run(["xcrun", "simctl", "spawn", d.serial, "/usr/bin/true"],
+                              capture_output=True, timeout=SIM_SPAWN_S).returncode == 0
+    except subprocess.TimeoutExpired:
+        return False
+
+
+def _revive_simulator(d: Device, run: Path, log) -> None:
+    """Shut the simulator down, boot it again, and hold it to the app build
+    the run recorded. GitHub's xcode-27 runner stalled CoreSimulator in four
+    iOS jobs from 2026-10-31 to 11-02, at a different step each time (a
+    launch, `simctl help`, a terminate), and the simulator then ran not even
+    `simctl spawn /usr/bin/true`. If the shutdown does not answer either,
+    the service is stuck: on a CI runner it is killed — launchd starts it
+    again on the next simctl — but never elsewhere, where it holds every
+    simulator on somebody's Mac."""
+    import subprocess
+
+    from .device import MOBIUM
+    from .record import _app
+
+    def simctl(*argv: str, timeout: float) -> bool:
+        """True if simctl came back in time, whatever it exited with: a
+        shutdown of a simulator already shut down exits 149."""
+        try:
+            subprocess.run(["xcrun", "simctl", *argv], capture_output=True, timeout=timeout)
+            return True
+        except subprocess.TimeoutExpired:
+            return False
+
+    # The daemon holds a WebDriverAgent session on the simulator going away.
+    try:
+        subprocess.run([str(MOBIUM), "daemon", "stop"], capture_output=True, timeout=60)
+    except subprocess.TimeoutExpired:
+        log("mobium daemon stop did not answer in 60 s; going on")
+    if not simctl("shutdown", d.serial, timeout=SIM_SHUTDOWN_S):
+        if os.environ.get("GITHUB_ACTIONS") != "true":
+            log(f"simctl shutdown did not answer in {SIM_SHUTDOWN_S} s: CoreSimulator is stuck")
+            raise HarnessError("the simulator stopped answering and CoreSimulator did not answer a shutdown; "
+                               "off a CI runner the harness does not kill CoreSimulator, which holds every "
+                               "simulator on the Mac — restart it by hand")
+        subprocess.run(["killall", "-9", CORESIMULATOR], capture_output=True, timeout=30)
+        log(f"simctl shutdown did not answer in {SIM_SHUTDOWN_S} s: killed {CORESIMULATOR}")
+        if not simctl("shutdown", d.serial, timeout=SIM_SHUTDOWN_S):
+            raise HarnessError("CoreSimulator did not answer a shutdown even after it was killed")
+    # bootstatus -b boots the simulator and returns once it has finished.
+    if not simctl("bootstatus", d.serial, "-b", timeout=SIM_BOOT_S):
+        raise HarnessError(f"the simulator did not boot again within {SIM_BOOT_S} s")
+    if not _spawns(d):
+        raise HarnessError("the simulator was booted again and still does not answer simctl spawn")
+    log("shut the simulator down and booted it again; it answers simctl")
+    rec = json.loads((run / "record.json").read_text())
+    if _app(d).get("app_sha256") != rec["app"].get("app_sha256"):
+        log("the app build changed across the restart: stopping")
+        raise HarnessError("the app build changed across a simulator restart; see notes.txt")
+
+
 def recover(d: Device, run: Path, why: str) -> None:
     """After a harness fault: if the device no longer answers adb, restart it
     and confirm it still holds the app build the run recorded. Every step is
@@ -155,17 +221,13 @@ def recover(d: Device, run: Path, why: str) -> None:
         # (GitHub's xcode-27 runner, 2026-10-31: a launch that timed out in
         # simctl). Ask the simulator itself; one that answers gets the trial
         # again, as an Android device that answers adb does.
-        try:
-            alive = subprocess.run(["xcrun", "simctl", "spawn", d.serial, "/usr/bin/true"],
-                                   capture_output=True, timeout=30).returncode == 0
-        except subprocess.TimeoutExpired:
-            alive = False
-        if alive:
+        if _spawns(d):
             log("the simulator answers simctl; retrying the trial")
             return
-        log("the simulator did not answer simctl spawn within 30 s")
-        raise HarnessError("the simulator stopped answering after the harness fault above; "
-                           "a simulator is not revived by the harness")
+        log(f"the simulator did not answer simctl spawn within {SIM_SPAWN_S} s")
+        _revive_simulator(d, run, log)
+        log("same app build; retrying the trial")
+        return
 
     def answers() -> bool:
         try:
