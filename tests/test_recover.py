@@ -39,7 +39,11 @@ s="{state}"
 case "$2" in
   spawn) [ -e "$s/booted" ] ;;
   shutdown) if [ -e "$s/stuck" ] && [ ! -e "$s/killed" ]; then sleep 5; fi; rm -f "$s/booted"; exit 149 ;;
-  bootstatus) [ -e "$s/no-boot" ] || touch "$s/booted" ;;
+  bootstatus)
+    if [ -e "$s/boot-fails" ] && [ ! -e "$s/killed" ]; then echo "Unable to boot device" >&2; exit 1; fi
+    if [ -e "$s/no-boot" ] && [ ! -e "$s/killed" ]; then exit 0; fi
+    if [ -e "$s/dead" ]; then exit 0; fi
+    touch "$s/booted" ;;
 esac
 """)
     (bin_dir / "killall").write_text(f'#!/bin/sh\necho "killall $*" >> "{calls}"\ntouch "{state}/killed"\n')
@@ -103,10 +107,41 @@ def test_a_stuck_coresimulator_is_never_killed_off_a_ci_runner(sim):
     assert "CoreSimulator is stuck" in sim.notes()
 
 
-def test_a_simulator_still_dead_after_its_boot_ends_the_run(sim):
+def test_a_boot_that_runs_nothing_kills_coresimulator_on_a_ci_runner(sim, monkeypatch):
+    # GitHub's runner, 2026-11-02: the shutdown answered, the boot came
+    # back, and the simulator ran nothing; the first version gave up there.
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
     sim.set("no-boot")
-    with pytest.raises(HarnessError, match="still does not answer"):
+    cli.recover(Device(UDID), sim.run, FAULT)
+    assert f"killall -9 {cli.CORESIMULATOR}" in sim.calls()
+    assert "booted again and does not answer simctl spawn" in sim.notes()
+    assert "same app build; retrying" in sim.notes()
+
+
+def test_a_boot_that_fails_is_not_taken_for_a_boot(sim, monkeypatch):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    sim.set("boot-fails")
+    cli.recover(Device(UDID), sim.run, FAULT)
+    calls = sim.calls()
+    # No spawn between the failed boot and the kill: a failed boot ends the cycle.
+    assert calls[:4] == [f"simctl spawn {UDID} /usr/bin/true", f"simctl shutdown {UDID}",
+                         f"simctl bootstatus {UDID} -b", f"killall -9 {cli.CORESIMULATOR}"]
+    assert "simctl bootstatus: exit 1 in 0 s: Unable to boot device" in sim.notes()
+
+
+def test_a_boot_that_runs_nothing_is_left_alone_off_a_ci_runner(sim):
+    sim.set("no-boot")
+    with pytest.raises(HarnessError, match="restart it by hand"):
         cli.recover(Device(UDID), sim.run, FAULT)
+    assert not any(c.startswith("killall") for c in sim.calls())
+
+
+def test_a_simulator_dead_even_after_the_kill_ends_the_run(sim, monkeypatch):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    sim.set("dead")
+    with pytest.raises(HarnessError, match="even after CoreSimulator was killed"):
+        cli.recover(Device(UDID), sim.run, FAULT)
+    assert "simctl shutdown: exit 149" in sim.notes()
 
 
 def test_another_app_build_after_the_restart_ends_the_run(sim, monkeypatch):

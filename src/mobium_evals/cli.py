@@ -156,44 +156,61 @@ def _revive_simulator(d: Device, run: Path, log) -> None:
     the run recorded. GitHub's xcode-27 runner stalled CoreSimulator in four
     iOS jobs from 2026-10-31 to 11-02, at a different step each time (a
     launch, `simctl help`, a terminate), and the simulator then ran not even
-    `simctl spawn /usr/bin/true`. If the shutdown does not answer either,
-    the service is stuck: on a CI runner it is killed — launchd starts it
-    again on the next simctl — but never elsewhere, where it holds every
-    simulator on somebody's Mac."""
+    `simctl spawn /usr/bin/true`.
+
+    If a shutdown and boot do not bring it back, the service is stuck: on a
+    CI runner it is killed — launchd starts it again on the next simctl —
+    and the cycle run once more; never elsewhere, where it holds every
+    simulator on somebody's Mac. The first version killed it only when the
+    shutdown hung; on 11-02 the shutdown answered, the boot came back, and
+    the simulator still ran nothing, so the service was never killed. Every
+    simctl call's exit status and last line go to the notes, which that
+    run's did not say."""
     import subprocess
 
     from .device import MOBIUM
     from .record import _app
 
-    def simctl(*argv: str, timeout: float) -> bool:
-        """True if simctl came back in time, whatever it exited with: a
-        shutdown of a simulator already shut down exits 149."""
+    def simctl(*argv: str, timeout: float) -> int | None:
+        """simctl's exit status, or None if it did not answer in time."""
+        name = f"simctl {argv[0]}"
+        t = time.monotonic()
         try:
-            subprocess.run(["xcrun", "simctl", *argv], capture_output=True, timeout=timeout)
-            return True
+            p = subprocess.run(["xcrun", "simctl", *argv], capture_output=True, text=True, timeout=timeout)
         except subprocess.TimeoutExpired:
+            log(f"{name}: no answer in {timeout} s")
+            return None
+        said = (p.stderr or p.stdout).strip().splitlines()
+        log(f"{name}: exit {p.returncode} in {time.monotonic() - t:.0f} s" + (f": {said[-1][:200]}" if said else ""))
+        return p.returncode
+
+    def cycle() -> bool:
+        # A shutdown of a simulator already shut down exits 149: only an
+        # answer matters. bootstatus -b boots it and returns once booted.
+        if simctl("shutdown", d.serial, timeout=SIM_SHUTDOWN_S) is None:
             return False
+        if simctl("bootstatus", d.serial, "-b", timeout=SIM_BOOT_S) != 0:
+            return False
+        if not _spawns(d):
+            log("the simulator was booted again and does not answer simctl spawn")
+            return False
+        return True
 
     # The daemon holds a WebDriverAgent session on the simulator going away.
     try:
         subprocess.run([str(MOBIUM), "daemon", "stop"], capture_output=True, timeout=60)
     except subprocess.TimeoutExpired:
         log("mobium daemon stop did not answer in 60 s; going on")
-    if not simctl("shutdown", d.serial, timeout=SIM_SHUTDOWN_S):
+    if not cycle():
         if os.environ.get("GITHUB_ACTIONS") != "true":
-            log(f"simctl shutdown did not answer in {SIM_SHUTDOWN_S} s: CoreSimulator is stuck")
-            raise HarnessError("the simulator stopped answering and CoreSimulator did not answer a shutdown; "
+            log("a shutdown and boot did not bring the simulator back: CoreSimulator is stuck")
+            raise HarnessError("the simulator stopped answering and a shutdown and boot did not bring it back; "
                                "off a CI runner the harness does not kill CoreSimulator, which holds every "
                                "simulator on the Mac — restart it by hand")
         subprocess.run(["killall", "-9", CORESIMULATOR], capture_output=True, timeout=30)
-        log(f"simctl shutdown did not answer in {SIM_SHUTDOWN_S} s: killed {CORESIMULATOR}")
-        if not simctl("shutdown", d.serial, timeout=SIM_SHUTDOWN_S):
-            raise HarnessError("CoreSimulator did not answer a shutdown even after it was killed")
-    # bootstatus -b boots the simulator and returns once it has finished.
-    if not simctl("bootstatus", d.serial, "-b", timeout=SIM_BOOT_S):
-        raise HarnessError(f"the simulator did not boot again within {SIM_BOOT_S} s")
-    if not _spawns(d):
-        raise HarnessError("the simulator was booted again and still does not answer simctl spawn")
+        log(f"a shutdown and boot did not bring the simulator back: killed {CORESIMULATOR}")
+        if not cycle():
+            raise HarnessError("the simulator did not come back even after CoreSimulator was killed; see notes.txt")
     log("shut the simulator down and booted it again; it answers simctl")
     rec = json.loads((run / "record.json").read_text())
     if _app(d).get("app_sha256") != rec["app"].get("app_sha256"):
