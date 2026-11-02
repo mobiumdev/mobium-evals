@@ -67,7 +67,12 @@ esac
                 (state / n).touch()
 
         def calls(self):
-            return calls.read_text().splitlines() if calls.exists() else []
+            """The calls that act or probe; the report's reads are left out."""
+            lines = calls.read_text().splitlines() if calls.exists() else []
+            return [c for c in lines if not c.startswith(("simctl list", "simctl runtime"))]
+
+        def reported(self):
+            return [c for c in calls.read_text().splitlines() if c.startswith(("simctl list", "simctl runtime"))]
 
         def notes(self):
             return (run / "notes.txt").read_text()
@@ -88,6 +93,9 @@ def test_a_simulator_that_does_not_answer_is_booted_again(sim):
     assert sim.calls() == [f"simctl spawn {UDID} /usr/bin/true", f"simctl shutdown {UDID}",
                            f"simctl bootstatus {UDID} -b", f"simctl spawn {UDID} /usr/bin/true"]
     assert "booted it again" in sim.notes() and "same app build; retrying" in sim.notes()
+    # The first refusal is reported: the device, the runtimes, the mounts.
+    assert sim.reported() == ["simctl list -j devices", "simctl runtime list"]
+    assert "device: " in sim.notes() and "runtimes: " in sim.notes() and "mounted: " in sim.notes()
 
 
 def test_a_stuck_coresimulator_is_killed_on_a_ci_runner(sim, monkeypatch):

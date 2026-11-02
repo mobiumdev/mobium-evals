@@ -161,6 +161,35 @@ def _spawns(d: Device, log) -> bool:
     return p.returncode == 0
 
 
+def _sim_report(d: Device, log) -> None:
+    """What CoreSimulator says of the simulator, its runtime and the
+    runtime's disk image, into the notes. On GitHub's runner, 11-02, a
+    spawn failed because dyld found no libSystem in the simulator's root
+    and Mobium found no such device: the iOS 27 runtime is a disk image
+    mounted on demand, and nothing recorded whether it still was."""
+    import subprocess
+
+    def out(argv: list[str]) -> str:
+        try:
+            p = subprocess.run(argv, capture_output=True, text=True, timeout=20)
+            return p.stdout + p.stderr
+        except subprocess.TimeoutExpired:
+            return f"{argv[0]} {argv[1] if len(argv) > 1 else ''}: no answer in 20 s"
+    try:
+        devices = json.loads(out(["xcrun", "simctl", "list", "-j", "devices"])).get("devices", {})
+        mine = [(rt, x) for rt, xs in devices.items() for x in xs if x.get("udid") == d.serial]
+        log("device: " + ("; ".join(f"{rt.rsplit('.', 1)[-1]} {x.get('state')}, available "
+                                    f"{x.get('isAvailable')}, {x.get('availabilityError') or 'no error'}"
+                                    for rt, x in mine) or "not listed"))
+    except ValueError:
+        log("device: simctl list gave no JSON")
+    runtimes = [ln.strip() for ln in out(["xcrun", "simctl", "runtime", "list"]).splitlines() if ln.startswith("iOS")]
+    log("runtimes: " + ("; ".join(runtimes) or "none listed"))
+    mounts = [ln.split(" on ")[1].split(" (")[0] for ln in out(["mount"]).splitlines()
+              if "/CoreSimulator/Volumes/" in ln and " on " in ln]
+    log("mounted: " + (", ".join(mounts) or "no runtime volume"))
+
+
 def _revive_simulator(d: Device, run: Path, log) -> None:
     """Shut the simulator down, boot it again, and hold it to the app build
     the run recorded. GitHub's xcode-27 runner stalled CoreSimulator in four
@@ -203,6 +232,7 @@ def _revive_simulator(d: Device, run: Path, log) -> None:
             return False
         if not _spawns(d, log):
             log("the simulator was booted again and does not answer simctl spawn")
+            _sim_report(d, log)
             return False
         return True
 
@@ -252,6 +282,7 @@ def recover(d: Device, run: Path, why: str) -> None:
             log("the simulator answers simctl; retrying the trial")
             return
         log("the simulator does not answer simctl spawn")
+        _sim_report(d, log)
         _revive_simulator(d, run, log)
         log("same app build; retrying the trial")
         return
