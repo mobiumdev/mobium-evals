@@ -422,7 +422,18 @@ def _feed_state(d: Device, p: P) -> State:
 
 
 def _count_feed(d: Device, p: P) -> Finish:
-    d.m("scroll-to", "testid=feedEnd", "--direction", "down", timeout=150, check=True)
+    # The feed's end takes 13 of scroll-to's 15 swipes on a fast emulator,
+    # since swipes land while a page loads; GitHub's slower one ran out
+    # twice on 2026-11-02, and Mobium said "the list goes on — app_scroll_to
+    # again goes on from here". The reference does what an agent is told.
+    for _ in range(3):
+        r = d.m("scroll-to", "testid=feedEnd", "--direction", "down", timeout=150)
+        if r.ok:
+            break
+        if "the list goes on" not in r.text():
+            raise HarnessError(f"scroll-to testid=feedEnd: {r.text()}")
+    else:
+        raise HarnessError(f"testid=feedEnd not reached in three scroll-to calls: {r.text()}")
     m = re.match(r"rows: (\d+)", state_line(d, "feedState") or "")
     return done(answer=m.group(1) if m else None)
 
