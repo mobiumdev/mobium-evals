@@ -37,7 +37,7 @@ def sim(tmp_path, monkeypatch):
 echo "$*" >> "{calls}"
 s="{state}"
 case "$2" in
-  spawn) [ -e "$s/booted" ] ;;
+  spawn) [ -e "$s/booted" ] || {{ echo "Unable to lookup in current state: Shutdown" >&2; exit 148; }} ;;
   shutdown) if [ -e "$s/stuck" ] && [ ! -e "$s/killed" ]; then sleep 5; fi; rm -f "$s/booted"; exit 149 ;;
   bootstatus)
     if [ -e "$s/boot-fails" ] && [ ! -e "$s/killed" ]; then echo "Unable to boot device" >&2; exit 1; fi
@@ -115,6 +115,8 @@ def test_a_boot_that_runs_nothing_kills_coresimulator_on_a_ci_runner(sim, monkey
     cli.recover(Device(UDID), sim.run, FAULT)
     assert f"killall -9 {cli.CORESIMULATOR}" in sim.calls()
     assert "booted again and does not answer simctl spawn" in sim.notes()
+    # What simctl said is in the notes, not only that it refused.
+    assert "simctl spawn: exit 148 in 0 s: Unable to lookup in current state: Shutdown" in sim.notes()
     assert "same app build; retrying" in sim.notes()
 
 

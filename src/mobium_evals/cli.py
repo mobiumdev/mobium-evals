@@ -140,15 +140,25 @@ SIM_SPAWN_S, SIM_SHUTDOWN_S, SIM_BOOT_S = 30, 60, 300
 CORESIMULATOR = "com.apple.CoreSimulator.CoreSimulatorService"
 
 
-def _spawns(d: Device) -> bool:
-    """Whether the simulator runs a process: the least a working one does."""
+def _spawns(d: Device, log) -> bool:
+    """Whether the simulator runs a process: the least a working one does.
+    A refusal is logged with what simctl said: on GitHub's runner, 11-02, it
+    exited non-zero in 16 to 24 s after clean boots, and the notes could
+    not say why."""
     import subprocess
 
+    t = time.monotonic()
     try:
-        return subprocess.run(["xcrun", "simctl", "spawn", d.serial, "/usr/bin/true"],
-                              capture_output=True, timeout=SIM_SPAWN_S).returncode == 0
+        p = subprocess.run(["xcrun", "simctl", "spawn", d.serial, "/usr/bin/true"],
+                           capture_output=True, text=True, timeout=SIM_SPAWN_S)
     except subprocess.TimeoutExpired:
+        log(f"simctl spawn: no answer in {SIM_SPAWN_S} s")
         return False
+    if p.returncode:
+        said = (p.stderr or p.stdout).strip().splitlines()
+        log(f"simctl spawn: exit {p.returncode} in {time.monotonic() - t:.0f} s"
+            + (f": {' / '.join(said[-3:])[:400]}" if said else ""))
+    return p.returncode == 0
 
 
 def _revive_simulator(d: Device, run: Path, log) -> None:
@@ -191,7 +201,7 @@ def _revive_simulator(d: Device, run: Path, log) -> None:
             return False
         if simctl("bootstatus", d.serial, "-b", timeout=SIM_BOOT_S) != 0:
             return False
-        if not _spawns(d):
+        if not _spawns(d, log):
             log("the simulator was booted again and does not answer simctl spawn")
             return False
         return True
@@ -238,10 +248,10 @@ def recover(d: Device, run: Path, why: str) -> None:
         # (GitHub's xcode-27 runner, 2026-10-31: a launch that timed out in
         # simctl). Ask the simulator itself; one that answers gets the trial
         # again, as an Android device that answers adb does.
-        if _spawns(d):
+        if _spawns(d, log):
             log("the simulator answers simctl; retrying the trial")
             return
-        log(f"the simulator did not answer simctl spawn within {SIM_SPAWN_S} s")
+        log("the simulator does not answer simctl spawn")
         _revive_simulator(d, run, log)
         log("same app build; retrying the trial")
         return
