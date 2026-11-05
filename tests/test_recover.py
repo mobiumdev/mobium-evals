@@ -20,6 +20,7 @@ import pytest
 
 from mobium_evals import cli, device, record
 from mobium_evals.device import Device, HarnessError
+from mobium_evals.hostwatch import runtime_mounts
 
 UDID = "C17DDE40-7ABB-4516-B5ED-4144D7B9A9E9"
 FAULT = "t27-hidden-injection null: mobium terminate dev.mobium.mobiumapp timed out after 90s"
@@ -86,6 +87,35 @@ def test_a_simulator_that_answers_gets_the_trial_again(sim, capsys):
     assert sim.calls() == [f"simctl spawn {UDID} /usr/bin/true"]
     assert FAULT in sim.notes() and "answers simctl; retrying" in sim.notes()
     assert FAULT in capsys.readouterr().err  # the job log names the cause
+
+
+def test_runtime_mounts_finds_both_places_a_runtime_mounts():
+    # The lines `mount` printed on a Mac with iOS 26.5 and iOS 27 runtimes.
+    assert runtime_mounts(
+        "/dev/disk3s1s1 on / (apfs, sealed, local, read-only, journaled)\n"
+        "/dev/disk13s1 on /Library/Developer/CoreSimulator/Volumes/iOS_23F77 (apfs, sealed, local, read-only)\n"
+        "/dev/disk7s1 on /private/var/run/com.apple.security.cryptexd/mnt/"
+        "com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.Hg1vG7 (apfs, sealed, local, read-only)\n"
+    ) == [
+        "/Library/Developer/CoreSimulator/Volumes/iOS_23F77",
+        "/private/var/run/com.apple.security.cryptexd/mnt/com.apple.iPhoneOS.SimulatorRuntime-v24.1.434.0.Hg1vG7",
+    ]
+
+
+def test_a_stall_on_a_ci_runner_reports_the_host(sim, monkeypatch):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setattr(cli, "HOST_REPORT", (("said", ["echo", "hello"], 5), ("absent", ["no-such-command"], 5),
+                                             ("hangs", ["sleep", "5"], 0.1)))
+    cli.recover(Device(UDID), sim.run, FAULT)
+    [report] = sim.run.glob("host-*.txt")
+    assert f"host: {report.name}" in sim.notes()
+    text = report.read_text()
+    assert "=== said\nhello\n" in text and "=== absent\n" in text and "no answer in 0.1 s" in text
+
+
+def test_a_stall_off_a_ci_runner_reports_nothing_of_the_host(sim):
+    cli.recover(Device(UDID), sim.run, FAULT)
+    assert not list(sim.run.glob("host-*.txt"))
 
 
 def test_a_simulator_that_does_not_answer_is_booted_again(sim):

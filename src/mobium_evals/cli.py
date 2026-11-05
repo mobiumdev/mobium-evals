@@ -18,6 +18,7 @@ from pathlib import Path
 from .device import Device, HarnessError
 from .record import app_hash, describe_device, run_record
 from . import report
+from .hostwatch import runtime_mounts
 from .runner import run_trial
 from .tasks import TASKS
 
@@ -161,7 +162,7 @@ def _spawns(d: Device, log) -> bool:
     return p.returncode == 0
 
 
-def _sim_report(d: Device, log) -> None:
+def _sim_report(d: Device, run: Path, log) -> None:
     """What CoreSimulator says of the simulator, its runtime and the
     runtime's disk image, into the notes. On GitHub's runner, 11-02, a
     spawn failed because dyld found no libSystem in the simulator's root
@@ -185,9 +186,48 @@ def _sim_report(d: Device, log) -> None:
         log("device: simctl list gave no JSON")
     runtimes = [ln.strip() for ln in out(["xcrun", "simctl", "runtime", "list"]).splitlines() if ln.startswith("iOS")]
     log("runtimes: " + ("; ".join(runtimes) or "none listed"))
-    mounts = [ln.split(" on ")[1].split(" (")[0] for ln in out(["mount"]).splitlines()
-              if "/CoreSimulator/Volumes/" in ln and " on " in ln]
-    log("mounted: " + (", ".join(mounts) or "no runtime volume"))
+    log("mounted: " + (", ".join(runtime_mounts(out(["mount"]))) or "no runtime volume"))
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        log(f"host: {_host_report(run).name}")
+
+
+# What the host report asks, and how long each may take. `log show` is the
+# slow one, and a stalled host is why it is bounded.
+HOST_REPORT: tuple[tuple[str, list[str], float], ...] = (
+    ("memory pressure", ["memory_pressure", "-Q"], 20),
+    ("swap", ["sysctl", "vm.swapusage"], 20),
+    ("vm_stat", ["vm_stat"], 20),
+    ("load", ["uptime"], 20),
+    ("by memory", ["ps", "-axm", "-o", "pid,ppid,pcpu,rss,etime,stat,comm"], 20),
+    ("by cpu", ["ps", "-axr", "-o", "pid,ppid,pcpu,rss,etime,stat,comm"], 20),
+    ("jetsam reports", ["ls", "-lt", "/Library/Logs/DiagnosticReports"], 20),
+    ("log", ["log", "show", "--last", "10m", "--style", "compact", "--predicate",
+             'process == "simdiskimaged" OR process == "CoreSimulatorService" '
+             'OR eventMessage CONTAINS "memorystatus" OR eventMessage CONTAINS "jetsam"'], 60),
+)
+HOST_REPORT_LINES = 400
+
+
+def _host_report(run: Path) -> Path:
+    """The host at a stall, in a file of its own beside the notes. Only on a
+    CI runner: process names and logs on somebody's Mac are theirs."""
+    import subprocess
+
+    path = run / f"host-{time.strftime('%H%M%S')}.txt"
+    with path.open("w") as f:
+        for name, argv, timeout in HOST_REPORT:
+            f.write(f"=== {name}\n")
+            try:
+                p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
+                # ps and ls sort what matters first, the log last: keep each end.
+                lines = (p.stdout + p.stderr).splitlines()
+                keep = lines[-HOST_REPORT_LINES:] if name == "log" else lines[:40]
+                f.write("\n".join(keep) + "\n")
+            except subprocess.TimeoutExpired:
+                f.write(f"no answer in {timeout} s\n")
+            except OSError as e:
+                f.write(f"{e}\n")
+    return path
 
 
 def _revive_simulator(d: Device, run: Path, log) -> None:
@@ -232,7 +272,7 @@ def _revive_simulator(d: Device, run: Path, log) -> None:
             return False
         if not _spawns(d, log):
             log("the simulator was booted again and does not answer simctl spawn")
-            _sim_report(d, log)
+            _sim_report(d, run, log)
             return False
         return True
 
@@ -282,7 +322,7 @@ def recover(d: Device, run: Path, why: str) -> None:
             log("the simulator answers simctl; retrying the trial")
             return
         log("the simulator does not answer simctl spawn")
-        _sim_report(d, log)
+        _sim_report(d, run, log)
         _revive_simulator(d, run, log)
         log("same app build; retrying the trial")
         return
