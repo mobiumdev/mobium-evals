@@ -1,6 +1,8 @@
-# A failed run nobody was watching opens an issue: a scheduled run, a push
-# to the default branch, a release tag. A pull request's run is not counted,
-# since the pull request already shows it. One issue per workflow, labeled
+# A failed run nobody was watching opens an issue: a scheduled run or a push
+# on the default branch. A pull request's run is not counted, since the pull
+# request already shows it, and nor is a run dispatched on another branch,
+# which says nothing of the default one: such a pass closed this issue with
+# the failure unfixed, twice. One issue per workflow, labeled
 # ci-failure: a later failure comments on it, and the next run that passes
 # comments and closes it, so the open issues are what is broken now.
 #
@@ -21,6 +23,7 @@ jobs:
   issue:
     if: >
       github.event.workflow_run.event != 'pull_request' &&
+      github.event.workflow_run.head_branch == github.event.repository.default_branch &&
       contains(fromJSON('["failure", "timed_out", "success"]'), github.event.workflow_run.conclusion)
     runs-on: ubuntu-latest
     env:
