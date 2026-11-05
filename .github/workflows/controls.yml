@@ -1,5 +1,5 @@
 # Every task's controls, each night, on a GitHub-hosted Android 15 emulator
-# and iOS simulators: the reference solution must pass, and doing
+# and an iOS 27 simulator: the reference solution must pass, and doing
 # nothing and the wrong thing must fail. They drive no model and spend
 # nothing, so this runs free;
 # what it catches is the harness or Mobium no longer able to tell pass from
@@ -146,25 +146,15 @@ jobs:
   # on the xcode-27 image: GitHub's macOS runners run iOS simulators, though
   # not Android emulators. MobiumApp comes from its latest release; Mobium
   # builds WebDriverAgent for the simulator on first use, a few minutes.
-  ios:
+  ios-27:
     if: github.repository_owner == 'mobiumdev'
-    name: ${{ matrix.name }}
-    runs-on: ${{ matrix.runner }}
+    runs-on: xcode-27
     timeout-minutes: 60
-    # ios-26 is the comparison for ios-27's CoreSimulator stalls: the same
-    # controls on another macOS, Xcode and runtime, all changed at once. A
-    # stall here too points at GitHub's runners; none points at the xcode-27
-    # stack, not at iOS 27 alone. It cannot fail the run. Remove it once
-    # that is answered.
-    continue-on-error: ${{ matrix.comparison }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - {name: ios-27, runner: xcode-27, runtime: "27.0", device: iPhone 18 Pro, comparison: false}
-          - {name: ios-26, runner: macos-26, runtime: "26.5", device: iPhone 17 Pro, comparison: true}
     env:
       GH_TOKEN: ${{ github.token }}
+      # Load runs in the hundreds here, on every job, passing or not. A launch
+      # went past the usual 90 s on simulators that worked.
+      MOBIUM_EVALS_DEVICE_TIMEOUT_S: "240"
     steps:
       - uses: actions/checkout@v7
 
@@ -196,17 +186,19 @@ jobs:
         run: nohup uv run python -m mobium_evals.hostwatch runs/host.tsv > /dev/null 2>&1 &
 
       - name: Simulator and MobiumApp
-        env:
-          RUNTIME: ${{ matrix.runtime }}
-          DEVICE: ${{ matrix.device }}
         run: |
-          runtime=$(xcrun simctl list runtimes -j | python3 -c 'import json, os, sys
-          rs = [r for r in json.load(sys.stdin)["runtimes"] if r["platform"] == "iOS" and r["isAvailable"] and r["version"].startswith(os.environ["RUNTIME"])]
+          runtime=$(xcrun simctl list runtimes -j | python3 -c 'import json, sys
+          rs = [r for r in json.load(sys.stdin)["runtimes"] if r["platform"] == "iOS" and r["isAvailable"] and r["version"].startswith("27.0")]
           print(rs[0]["identifier"])')
-          sim=$(xcrun simctl create mobium-ci "$DEVICE" "$runtime")
+          sim=$(xcrun simctl create mobium-ci "iPhone 18 Pro" "$runtime")
           xcrun simctl boot "$sim"
           xcrun simctl bootstatus "$sim" -b > /dev/null
-          gh release download -R mobiumdev/mobium-app -p MobiumApp-ios-simulator.zip -D app
+          # A download timed out here under the boot's load, 2026-11-05.
+          for try in 1 2 3; do
+            gh release download -R mobiumdev/mobium-app -p MobiumApp-ios-simulator.zip -D app --clobber && break
+            [ "$try" = 3 ] && exit 1
+            sleep 30
+          done
           unzip -q app/MobiumApp-ios-simulator.zip -d app
           xcrun simctl install "$sim" app/MobiumApp.app
           echo "SIM=$sim" >> "$GITHUB_ENV"
@@ -224,5 +216,5 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: controls-${{ matrix.name }}
+          name: controls-ios-27
           path: runs/

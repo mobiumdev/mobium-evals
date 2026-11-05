@@ -77,14 +77,9 @@ def cmd_controls(args: argparse.Namespace) -> int:
             if mode == "wrong" and task.wrong is None:
                 continue
             trial = lambda: run_trial(task, d, mode, run / task.id / mode, params(task, args.seed, 0))  # noqa: E731
-            try:
-                row = trial()
-            except HarnessError as e:
-                # A device gone offline (GitHub's emulator at t25, 2026-10-30)
-                # is the harness's fault, as in an agent run: bring it back,
-                # say so in the notes, try the control once more.
-                recover(d, run, f"{task.id} {mode}: {e}")
-                row = trial()
+            # A device gone offline (GitHub's emulator at t25, 2026-10-30) is
+            # the harness's fault, as in an agent run.
+            row = _with_recovery(trial, d, run, f"{task.id} {mode}")
             want = EXPECT[mode] or (mode == "null" and task.already_there)
             ok = row["passed"] == want and row["grader_deterministic"]
             bad += not ok
@@ -137,29 +132,36 @@ def _boot_same_serial(d: Device, avd: str) -> str:
 
 
 # Seconds; a test makes them short.
-SIM_SPAWN_S, SIM_SHUTDOWN_S, SIM_BOOT_S = 30, 60, 300
+SIM_SHUTDOWN_S, SIM_BOOT_S = 60, 300
 CORESIMULATOR = "com.apple.CoreSimulator.CoreSimulatorService"
 
 
-def _spawns(d: Device, log) -> bool:
-    """Whether the simulator runs a process: the least a working one does.
-    A refusal is logged with what simctl said: on GitHub's runner, 11-02, it
-    exited non-zero in 16 to 24 s after clean boots, and the notes could
-    not say why."""
+def _sim_state(d: Device) -> str | None:
+    """"Booted", "Shutdown" and so on, or None if simctl cannot say in time."""
     import subprocess
 
-    t = time.monotonic()
     try:
-        p = subprocess.run(["xcrun", "simctl", "spawn", d.serial, "/usr/bin/true"],
-                           capture_output=True, text=True, timeout=SIM_SPAWN_S)
-    except subprocess.TimeoutExpired:
-        log(f"simctl spawn: no answer in {SIM_SPAWN_S} s")
-        return False
-    if p.returncode:
-        said = (p.stderr or p.stdout).strip().splitlines()
-        log(f"simctl spawn: exit {p.returncode} in {time.monotonic() - t:.0f} s"
-            + (f": {' / '.join(said[-3:])[:400]}" if said else ""))
-    return p.returncode == 0
+        p = subprocess.run(["xcrun", "simctl", "list", "-j", "devices"], capture_output=True, text=True, timeout=20)
+        devices = json.loads(p.stdout).get("devices", {})
+    except (subprocess.TimeoutExpired, ValueError):
+        return None
+    return next((x.get("state") for xs in devices.values() for x in xs if x.get("udid") == d.serial), None)
+
+
+def _with_recovery(trial, d: Device, run: Path, label: str):
+    """A trial, tried again after a harness fault. An iOS simulator gets a
+    second try, since the first does not reboot it."""
+    try:
+        return trial()
+    except HarnessError as e:
+        recover(d, run, f"{label}: {e}")
+    if d.platform != "ios":
+        return trial()
+    try:
+        return trial()
+    except HarnessError as e:
+        recover(d, run, f"{label}, tried again: {e}", revive=True)
+    return trial()
 
 
 def _sim_report(d: Device, run: Path, log) -> None:
@@ -232,19 +234,14 @@ def _host_report(run: Path) -> Path:
 
 def _revive_simulator(d: Device, run: Path, log) -> None:
     """Shut the simulator down, boot it again, and hold it to the app build
-    the run recorded. GitHub's xcode-27 runner stalled CoreSimulator in four
-    iOS jobs from 2026-10-31 to 11-02, at a different step each time (a
-    launch, `simctl help`, a terminate), and the simulator then ran not even
-    `simctl spawn /usr/bin/true`.
+    the run recorded. If that does not work, the service is stuck: on a CI
+    runner it is killed — launchd starts it again on the next simctl — and
+    the cycle run once more; never elsewhere, where it holds every simulator
+    on somebody's Mac.
 
-    If a shutdown and boot do not bring it back, the service is stuck: on a
-    CI runner it is killed — launchd starts it again on the next simctl —
-    and the cycle run once more; never elsewhere, where it holds every
-    simulator on somebody's Mac. The first version killed it only when the
-    shutdown hung; on 11-02 the shutdown answered, the boot came back, and
-    the simulator still ran nothing, so the service was never killed. Every
-    simctl call's exit status and last line go to the notes, which that
-    run's did not say."""
+    The trial that follows says whether it worked. `simctl spawn /usr/bin/true`
+    cannot: on GitHub's runners it exits 134 ("no dyld cache") through whole
+    passing runs, 2026-11-05, and took for dead every simulator it asked about."""
     import subprocess
 
     from .device import MOBIUM
@@ -268,13 +265,7 @@ def _revive_simulator(d: Device, run: Path, log) -> None:
         # answer matters. bootstatus -b boots it and returns once booted.
         if simctl("shutdown", d.serial, timeout=SIM_SHUTDOWN_S) is None:
             return False
-        if simctl("bootstatus", d.serial, "-b", timeout=SIM_BOOT_S) != 0:
-            return False
-        if not _spawns(d, log):
-            log("the simulator was booted again and does not answer simctl spawn")
-            _sim_report(d, run, log)
-            return False
-        return True
+        return simctl("bootstatus", d.serial, "-b", timeout=SIM_BOOT_S) == 0
 
     # The daemon holds a WebDriverAgent session on the simulator going away.
     try:
@@ -284,24 +275,26 @@ def _revive_simulator(d: Device, run: Path, log) -> None:
     if not cycle():
         if os.environ.get("GITHUB_ACTIONS") != "true":
             log("a shutdown and boot did not bring the simulator back: CoreSimulator is stuck")
-            raise HarnessError("the simulator stopped answering and a shutdown and boot did not bring it back; "
+            raise HarnessError("a shutdown and boot of the simulator failed; "
                                "off a CI runner the harness does not kill CoreSimulator, which holds every "
                                "simulator on the Mac — restart it by hand")
         subprocess.run(["killall", "-9", CORESIMULATOR], capture_output=True, timeout=30)
         log(f"a shutdown and boot did not bring the simulator back: killed {CORESIMULATOR}")
         if not cycle():
             raise HarnessError("the simulator did not come back even after CoreSimulator was killed; see notes.txt")
-    log("shut the simulator down and booted it again; it answers simctl")
+    log("shut the simulator down and booted it again")
     rec = json.loads((run / "record.json").read_text())
     if _app(d).get("app_sha256") != rec["app"].get("app_sha256"):
         log("the app build changed across the restart: stopping")
         raise HarnessError("the app build changed across a simulator restart; see notes.txt")
 
 
-def recover(d: Device, run: Path, why: str) -> None:
+def recover(d: Device, run: Path, why: str, revive: bool = False) -> None:
     """After a harness fault: if the device no longer answers adb, restart it
     and confirm it still holds the app build the run recorded. Every step is
-    written to the run's notes, which the report's reader must see."""
+    written to the run's notes, which the report's reader must see.
+
+    `revive` is for a simulator that has already been given a second try."""
     import subprocess
 
     from .device import MOBIUM
@@ -313,16 +306,15 @@ def recover(d: Device, run: Path, why: str) -> None:
     # The job log is what a CI reader has; notes.txt is an artifact away.
     print(f"harness fault — {why}", file=sys.stderr, flush=True)
     if d.platform == "ios":
-        # A simulator never answers adb, so asking adb called every iOS
-        # fault "stopped answering" and the cause stayed in notes.txt
-        # (GitHub's xcode-27 runner, 2026-10-31: a launch that timed out in
-        # simctl). Ask the simulator itself; one that answers gets the trial
-        # again, as an Android device that answers adb does.
-        if _spawns(d, log):
-            log("the simulator answers simctl; retrying the trial")
-            return
-        log("the simulator does not answer simctl spawn")
+        # GitHub's runners take over 90 s for a launch while load is in the
+        # hundreds, on simulators that work (2026-11-05). A reboot adds to the
+        # load, so a simulator still booted is only tried again. One whose
+        # state cannot be read is too: slow is not gone.
         _sim_report(d, run, log)
+        state = _sim_state(d)
+        if not revive and state in ("Booted", None):
+            log(f"the simulator is {state or 'of unknown state'}; retrying the trial without a reboot")
+            return
         _revive_simulator(d, run, log)
         log("same app build; retrying the trial")
         return
@@ -387,14 +379,9 @@ def cmd_run(args: argparse.Namespace) -> int:
                         continue
                     trial = lambda: run_trial(task, d, "agent", out, p, model=model, effort=effort,  # noqa: E731
                                               max_turns=args.max_turns, wall_s=args.wall)
-                    try:
-                        row = trial()
-                    except HarnessError as e:
-                        # An emulator frozen mid-run (twice on 2026-10-11)
-                        # is the harness's fault, not the trial's: bring the
-                        # device back, say so in the run's notes, try once more.
-                        recover(d, run, f"{task.id} {model} r{i + 1}: {e}")
-                        row = trial()
+                    # An emulator frozen mid-run (twice on 2026-10-11) is the
+                    # harness's fault, not the trial's.
+                    row = _with_recovery(trial, d, run, f"{task.id} {model} r{i + 1}")
                     rows.append(row)
                     log.write(json.dumps(row, default=str) + "\n")
                     log.flush()
