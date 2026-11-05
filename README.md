@@ -321,6 +321,8 @@ says so. A real iPhone is not run yet.
 on every pull request: the Android tasks on a GitHub-hosted Android 15
 emulator (x86_64, Google APIs, Pixel 7, 4 cores and 4 GB), and the iOS
 tasks on a new iPhone 18 Pro simulator (iOS 27.0) on the `xcode-27` image.
+The iOS job's `runs/host.tsv` has a row of host state every 30 s, and a
+harness fault adds `host-<time>.txt` to the run folder.
 It runs in mobiumdev's copy only, where GitHub's runners are free; a failed
 nightly run opens an issue (`failure-issue.yml`). The controls drive no model, so it costs nothing;
 it is what tells, with no machine of one's own, that the harness and Mobium

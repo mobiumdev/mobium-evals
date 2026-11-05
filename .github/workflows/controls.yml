@@ -152,6 +152,9 @@ jobs:
     timeout-minutes: 60
     env:
       GH_TOKEN: ${{ github.token }}
+      # Load runs in the hundreds here, on every job, passing or not. A launch
+      # went past the usual 90 s on simulators that worked.
+      MOBIUM_EVALS_DEVICE_TIMEOUT_S: "240"
     steps:
       - uses: actions/checkout@v7
 
@@ -179,6 +182,9 @@ jobs:
       - uses: astral-sh/setup-uv@v7
       - run: uv sync
 
+      - name: Watch the host
+        run: nohup uv run python -m mobium_evals.hostwatch runs/host.tsv > /dev/null 2>&1 &
+
       - name: Simulator and MobiumApp
         run: |
           runtime=$(xcrun simctl list runtimes -j | python3 -c 'import json, sys
@@ -187,7 +193,12 @@ jobs:
           sim=$(xcrun simctl create mobium-ci "iPhone 18 Pro" "$runtime")
           xcrun simctl boot "$sim"
           xcrun simctl bootstatus "$sim" -b > /dev/null
-          gh release download -R mobiumdev/mobium-app -p MobiumApp-ios-simulator.zip -D app
+          # A download timed out here under the boot's load, 2026-11-05.
+          for try in 1 2 3; do
+            gh release download -R mobiumdev/mobium-app -p MobiumApp-ios-simulator.zip -D app --clobber && break
+            [ "$try" = 3 ] && exit 1
+            sleep 30
+          done
           unzip -q app/MobiumApp-ios-simulator.zip -d app
           xcrun simctl install "$sim" app/MobiumApp.app
           echo "SIM=$sim" >> "$GITHUB_ENV"
@@ -198,6 +209,7 @@ jobs:
       - name: Stop
         if: always()
         run: |
+          pkill -f mobium_evals.hostwatch || true
           "$MOBIUM_BIN" daemon stop || true
           xcrun simctl shutdown all || true
 

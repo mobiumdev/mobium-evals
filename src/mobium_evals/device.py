@@ -46,8 +46,11 @@ class Device:
         self.serial = serial
         self.platform = "ios" if _IOS_SERIAL.fullmatch(serial) else "android"
 
-    def m(self, *args: str, timeout: float = 90, check: bool = False) -> Result:
-        """Run a mobium command against this device."""
+    def m(self, *args: str, timeout: float | None = None, check: bool = False) -> Result:
+        """Run a mobium command against this device. A slow runner sets the
+        default with MOBIUM_EVALS_DEVICE_TIMEOUT_S."""
+        if timeout is None:
+            timeout = float(os.environ.get("MOBIUM_EVALS_DEVICE_TIMEOUT_S", 90))
         return self._run([str(MOBIUM), "--device", self.serial, *args], timeout, check)
 
     def adb(self, *args: str, timeout: float = 60, check: bool = False) -> Result:
