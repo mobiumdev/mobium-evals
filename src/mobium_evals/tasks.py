@@ -919,11 +919,10 @@ VERSION = Task(
 
 
 def _loads(d: Device) -> str:
-    """The Mac's load and the device's, 1/5/15 minutes. On 2026-10-31 the
-    nightly's reference heard each tone in pieces on both emulators, every
-    attempt, and never again in four runs that evening at a load of 3-5; the
-    Mac had booted an hour before. Recorded so the next split says whether
-    either machine was busy."""
+    """The Mac's load and the device's, 1/5/15 minutes, so a split tone says
+    whether either machine was busy. Load did not explain the splits of
+    2026-10-31 to 11-06: an emulator under launchd's default spawn type broke
+    12 tones in 18, and under a shell none in 8, at the same load."""
     host = " ".join(f"{x:.1f}" for x in os.getloadavg())
     try:
         guest = " ".join(d.adb("shell", "cat", "/proc/loadavg", timeout=15).out.split()[:3]) or "unread"
@@ -941,7 +940,10 @@ def _audio_reference(d: Device, p: P) -> Finish:
         r = d.m("--json", "audio", "stop", "-o", f"{tmp}/a.wav", check=True)
     after = _loads(d)
     timeline = json.loads(r.out).get("timeline") or []
-    found = [round(s["hz"]) for s in timeline if s.get("sound") and s.get("hz")]
+    # Longer than a tap's click, which can read as a tone near 780 Hz. Mobium's
+    # `expect` ignores the same 200 ms.
+    found = [round(s["hz"]) for s in timeline
+             if s.get("sound") and s.get("hz") and s["to"] - s["from"] > 200_000_000]
     # Every attempt, pass or not, so a split can be set beside the loads of
     # the nights that heard two tones.
     print(f"t23 reference heard {found}; before, {before}; after, {after}", file=sys.stderr, flush=True)

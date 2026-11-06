@@ -252,9 +252,20 @@ every tool call's arguments, never in Mobium's responses, and restated by
 Opus in 5 of 6 sign-ins. It is the baseline for the secret reference
 planned in Mobium's ROADMAP.
 
-## The nightly run
+## The weekly run
 
-`nightly/nightly.sh` runs the eval with nobody at the keyboard: Mobium built
+Run it by hand, weekly, from a shell, and keep the Mac awake:
+
+```sh
+caffeinate -i nightly/nightly.sh
+```
+
+Do not schedule it on a Mac. launchd's default spawn type broke the emulator's
+audio (12 captures in 18 split a tone, against none in 8 from a shell), and the
+Mac slept about 15 minutes inside runs. GitHub's scheduled controls, below, are
+the unattended check.
+
+`nightly/nightly.sh` runs the eval: Mobium built
 from `origin/main` in a scratch folder (a checkout with work in progress is
 never switched), then each device in turn — each emulator in
 `NIGHTLY_ANDROID_AVDS` (default `mobium-test,mobium-test-17`: Android 15 and
@@ -284,8 +295,7 @@ stopped by a harness fault writes no `summary.json`; the report counts what
 its `trials.jsonl` holds and names the fault, where until 2026-10-30 it said
 "0 of 0". An emulator that stops answering is booted again on its own port,
 so the serial the night holds still names it, and each run records the
-commit it built (`MOBIUM_COMMIT`), not the checkout's HEAD. `nightly/install.sh` installs it as
-a launchd agent at 03:00; the plist says how to remove it. Everything is
+commit it built (`MOBIUM_COMMIT`), not the checkout's HEAD. Everything is
 overridable by environment: `NIGHTLY_TASKS` and `NIGHTLY_IOS_TASKS`,
 `NIGHTLY_MODELS`, `NIGHTLY_INJECTION_MODELS`, `NIGHTLY_ANDROID_AVDS`,
 `NIGHTLY_APK`, `NIGHTLY_SHOP_APK`, `NIGHTLY_IOS=0`, `NIGHTLY_IOS_SIMS`, `MOBIUM_SRC`.
