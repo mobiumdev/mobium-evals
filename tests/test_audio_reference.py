@@ -1,6 +1,6 @@
 """t23's reference records the Mac's and the device's load, so a split tone
-(2026-10-31: [440, 440, 880, 880] on both emulators in the nightly, never
-again that evening) can be set beside how busy either machine was."""
+can be set beside how busy either machine was, and ignores a tap's click,
+which read as a third pitch: [780, 440, 880]."""
 
 import json
 
@@ -16,8 +16,18 @@ class FakeDevice:
 
     def m(self, *args, check=False, timeout=90):
         if args[:3] == ("--json", "audio", "stop"):
-            return Result(0, json.dumps({"timeline": [{"sound": True, "hz": h} for h in self.hz]}), "")
+            return Result(0, json.dumps({"timeline": self.timeline()}), "")
         return Result(0, "", "")
+
+    def timeline(self):
+        """Each pitch a sound of 2 s; (hz, seconds) gives another length."""
+        out, at = [], 0
+        for h in self.hz:
+            hz, secs = h if isinstance(h, tuple) else (h, 2)
+            to = at + int(secs * 1e9)
+            out.append({"from": at, "to": to, "sound": True, "hz": hz})
+            at = to
+        return out
 
     def adb(self, *args, timeout=60, check=False):
         if self.adb_fails:
@@ -37,6 +47,11 @@ def test_a_split_names_both_loads(capsys):
     msg = str(e.value)
     assert "[440, 440, 880, 880]" in msg and "host 19.8 12.0 6.0" in msg and "device 7.50 6.20 5.10" in msg
     assert "load: host 19.8" in capsys.readouterr().err
+
+
+def test_a_taps_click_is_not_a_tone():
+    f = tasks._audio_reference(FakeDevice([(780, 0.1), (440, 2.1), (880, 2.1)]), {})
+    assert f.answer == "440 Hz, then 880 Hz"
 
 
 def test_a_pass_records_the_loads_too(capsys):

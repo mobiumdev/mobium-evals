@@ -1,6 +1,7 @@
 #!/bin/sh
-# The nightly eval: Mobium's origin/main against the tasks, with nobody at the
-# keyboard, on the emulators in NIGHTLY_ANDROID_AVDS and then the simulators
+# The eval, run by hand weekly from a shell, never scheduled on a Mac: Mobium's
+# origin/main against the tasks, on the emulators in NIGHTLY_ANDROID_AVDS and
+# then the simulators
 # in NIGHTLY_IOS_SIMS, one device at a time. On each:
 # controls first, which spend no tokens and check that the graders can still
 # tell pass from fail; then each task the platform runs once under an agent,
@@ -12,7 +13,7 @@
 # injection — posts a macOS notification and exits 1. NIGHTLY_IOS=0 leaves
 # the simulators out.
 #
-#   nightly/nightly.sh                 # what launchd runs
+#   caffeinate -i nightly/nightly.sh   # the weekly run
 #   NIGHTLY_MODELS=claude-haiku-5-5:low NIGHTLY_TASKS=t01,t26 nightly/nightly.sh
 #
 # It builds Mobium from origin/main in a scratch folder, so a checkout with
